@@ -1,0 +1,48 @@
+########################################
+# Visual Studio / Rider / .NET tooling
+########################################
+.vs/
+**/.vs/
+.idea/
+*.iml
+
+########################################
+# Build output (.NET)
+########################################
+bin/
+obj/
+**/bin/
+**/obj/
+
+########################################
+# User-specific & cache files
+########################################
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+*.log
+
+########################################
+# EF Core / tooling artifacts
+########################################
+*.dtbcache
+*.dtbcache.v2
+*.futdcache.v2
+
+########################################
+# OS / editor noise
+########################################
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+########################################
+# Environment / secrets
+########################################
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*
