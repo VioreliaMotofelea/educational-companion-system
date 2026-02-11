@@ -1,5 +1,6 @@
 using EducationalCompanion.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using EducationalCompanion.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 var app = builder.Build();
+
+// Apply migrations and seed database (Development only)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await DatabaseSeeder.SeedAsync(dbContext);
+}
 
 // Middleware
 if (app.Environment.IsDevelopment())
