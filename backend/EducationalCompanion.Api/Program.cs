@@ -1,6 +1,13 @@
-using EducationalCompanion.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+
+using EducationalCompanion.Infrastructure.Persistence;
 using EducationalCompanion.Infrastructure.Persistence.Seed;
+
+using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Infrastructure.Repositories.Implementations;
+
+using EducationalCompanion.Api.Services.Abstractions;
+using EducationalCompanion.Api.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +22,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     options.UseNpgsql(connectionString);
 });
+
+// Repositories
+builder.Services.AddScoped<ILearningResourceRepository, LearningResourceRepository>();
+
+// Services
+builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();
 
 var app = builder.Build();
 
