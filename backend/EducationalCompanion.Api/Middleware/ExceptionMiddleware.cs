@@ -42,6 +42,16 @@ public class ExceptionMiddleware
             _logger.LogWarning(ex, "Forbidden operation");
             await HandleExceptionAsync(context, HttpStatusCode.Forbidden, ex.Message);
         }
+        catch (RecommendationGenerationException ex)
+        {
+            _logger.LogError(ex, "Recommendation generation failed");
+            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, ex.Message);
+        }
+        catch (GamificationRuleViolationException ex)
+        {
+            _logger.LogError(ex, "Gamification rule violation");
+            await HandleExceptionAsync(context, HttpStatusCode.InternalServerError, ex.Message);
+        }
         catch (DomainException ex)
         {
             _logger.LogWarning(ex, "Domain exception");
