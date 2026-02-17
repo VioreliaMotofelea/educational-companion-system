@@ -6,9 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EducationalCompanion.Infrastructure.Repositories.Implementations;
 
-public class LearningResourceRepository : GenericRepository<LearningResource>, ILearningResourceRepository
+public class LearningResourceRepository 
+    : GenericRepository<LearningResource>, ILearningResourceRepository
 {
-    public LearningResourceRepository(ApplicationDbContext context) : base(context) { }
+    public LearningResourceRepository(ApplicationDbContext context) 
+        : base(context)
+    {
+    }
 
     public async Task<IReadOnlyList<LearningResource>> SearchAsync(
         string? topic,
@@ -16,18 +20,25 @@ public class LearningResourceRepository : GenericRepository<LearningResource>, I
         string? contentType,
         CancellationToken ct = default)
     {
-        var query = Set.AsNoTracking().AsQueryable();
+        var query = Query().AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(topic))
-            query = query.Where(r => r.Topic.ToLower() == topic.ToLower());
+        {
+            var t = topic.Trim().ToLowerInvariant();
+            query = query.Where(x => x.Topic.ToLower() == t);
+        }
 
         if (difficulty.HasValue)
-            query = query.Where(r => r.Difficulty == difficulty.Value);
+            query = query.Where(x => x.Difficulty == difficulty.Value);
 
         if (!string.IsNullOrWhiteSpace(contentType) &&
             Enum.TryParse<ResourceContentType>(contentType, true, out var parsed))
-            query = query.Where(r => r.ContentType == parsed);
+        {
+            query = query.Where(x => x.ContentType == parsed);
+        }
 
-        return await query.ToListAsync(ct);
+        return await query
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(ct);
     }
 }

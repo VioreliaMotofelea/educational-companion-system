@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using EducationalCompanion.Api.Middleware;
-using EducationalCompanion.Infrastructure.Persistence;
 
 using EducationalCompanion.Infrastructure.Persistence;
 using EducationalCompanion.Infrastructure.Persistence.Seed;
@@ -33,8 +31,6 @@ builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();
 
 var app = builder.Build();
 
-app.UseMiddleware<ExceptionMiddleware>();
-
 // Apply migrations and seed database (Development only)
 if (app.Environment.IsDevelopment())
 {
@@ -42,7 +38,11 @@ if (app.Environment.IsDevelopment())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await dbContext.Database.MigrateAsync();
     await DatabaseSeeder.SeedAsync(dbContext);
-    
+}
+
+// Middleware
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
 }

@@ -1,4 +1,4 @@
-﻿using EducationalCompanion.Api.Dtos.LearningResources;
+using EducationalCompanion.Api.Dtos.LearningResources;
 using EducationalCompanion.Api.Services.Abstractions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,7 +32,7 @@ public class LearningResourcesController : ControllerBase
     public async Task<ActionResult<LearningResourceResponse>> GetById(Guid id, CancellationToken ct)
     {
         var item = await _service.GetByIdAsync(id, ct);
-        return item is null ? NotFound() : Ok(item);
+        return Ok(item);
     }
 
     [HttpPost]
@@ -45,14 +45,14 @@ public class LearningResourcesController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, UpdateLearningResourceRequest request, CancellationToken ct)
     {
-        var ok = await _service.UpdateAsync(id, request, ct);
-        return ok ? NoContent() : NotFound();
+        await _service.UpdateAsync(id, request, ct);
+        return NoContent();
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var ok = await _service.DeleteAsync(id, ct);
-        return ok ? NoContent() : NotFound();
+        await _service.DeleteAsync(id, ct);
+        return NoContent();
     }
 }
