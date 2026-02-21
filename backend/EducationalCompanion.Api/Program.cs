@@ -28,6 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ILearningResourceRepository, LearningResourceRepository>();
 builder.Services.AddScoped<IUserInteractionRepository, UserInteractionRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+builder.Services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
 
 // Services
 builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();

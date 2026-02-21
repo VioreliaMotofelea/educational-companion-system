@@ -14,4 +14,11 @@ public class UserProfileRepository : GenericRepository<UserProfile>, IUserProfil
         return await Query()
             .FirstOrDefaultAsync(x => x.UserId == userId, ct);
     }
+
+    public async Task<UserProfile?> GetByUserIdWithPreferencesAsync(string userId, CancellationToken ct = default)
+    {
+        return await Query()
+            .Include(p => p.Preferences)
+            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+    }
 }
