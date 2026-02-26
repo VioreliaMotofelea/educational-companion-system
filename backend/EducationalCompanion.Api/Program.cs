@@ -8,6 +8,7 @@ using EducationalCompanion.Infrastructure.Repositories.Implementations;
 
 using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Api.Services.Implementations;
+using EducationalCompanion.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,11 +26,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Repositories
 builder.Services.AddScoped<ILearningResourceRepository, LearningResourceRepository>();
+builder.Services.AddScoped<IUserInteractionRepository, UserInteractionRepository>();
+builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+builder.Services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
 
 // Services
 builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();
+builder.Services.AddScoped<IUserInteractionService, UserInteractionService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 
 var app = builder.Build();
+
+// Global exception handling (early in pipeline)
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Apply migrations and seed database (Development only)
 if (app.Environment.IsDevelopment())
@@ -38,11 +47,7 @@ if (app.Environment.IsDevelopment())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await dbContext.Database.MigrateAsync();
     await DatabaseSeeder.SeedAsync(dbContext);
-}
 
-// Middleware
-if (app.Environment.IsDevelopment())
-{
     app.UseSwagger();
     app.UseSwaggerUI();
 }
