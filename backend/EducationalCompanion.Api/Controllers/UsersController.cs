@@ -20,9 +20,7 @@ public class UsersController : ControllerBase
         _userProfileService = userProfileService;
     }
 
-    /// <summary>
-    /// Get full profile including preferences (for dashboard, AI aggregation).
-    /// </summary>
+    // Get full profile including preferences (for dashboard, AI aggregation)
     [HttpGet("{id}")]
     public async Task<ActionResult<UserProfileResponse>> GetProfile(string id, CancellationToken ct)
     {
@@ -30,9 +28,7 @@ public class UsersController : ControllerBase
         return Ok(profile);
     }
 
-    /// <summary>
-    /// Get only preferences (for settings screen, partial reads).
-    /// </summary>
+    // Get only preferences (for settings screen, partial reads)
     [HttpGet("{id}/preferences")]
     public async Task<ActionResult<UserPreferencesResponse>> GetPreferences(string id, CancellationToken ct)
     {
@@ -40,9 +36,7 @@ public class UsersController : ControllerBase
         return Ok(prefs);
     }
 
-    /// <summary>
-    /// Update preferences only (prevents accidental changes to XP or Level).
-    /// </summary>
+    // Update preferences only (prevents accidental changes to XP or Level)
     [HttpPut("{id}/preferences")]
     public async Task<IActionResult> UpdatePreferences(string id, UpdateUserPreferencesRequest request, CancellationToken ct)
     {
@@ -50,9 +44,7 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Get all interactions for a user.
-    /// </summary>
+    // Get all interactions for a user
     [HttpGet("{id}/interactions")]
     public async Task<ActionResult<IReadOnlyList<UserInteractionResponse>>> GetInteractions(string id, CancellationToken ct)
     {
@@ -60,9 +52,7 @@ public class UsersController : ControllerBase
         return Ok(items);
     }
 
-    /// <summary>
-    /// Get XP and level for a user.
-    /// </summary>
+    // Get XP and level for a user
     [HttpGet("{id}/xp")]
     public async Task<ActionResult<UserXpResponse>> GetXp(string id, CancellationToken ct)
     {

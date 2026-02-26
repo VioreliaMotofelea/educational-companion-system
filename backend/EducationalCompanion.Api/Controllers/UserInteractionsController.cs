@@ -35,9 +35,7 @@ public class UserInteractionsController : ControllerBase
         return Ok(item);
     }
 
-    /// <summary>
-    /// Get all interactions for a user (e.g. for AI recommendation / analytics).
-    /// </summary>
+    // Get all interactions for a user (for AI recommendation / analytics)
     [HttpGet("by-user/{userId}")]
     public async Task<ActionResult<IReadOnlyList<UserInteractionResponse>>> GetByUser(string userId, CancellationToken ct)
     {
