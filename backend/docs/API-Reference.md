@@ -1,6 +1,6 @@
 # API Reference
 
-Complete reference for the Educational Companion backend API. Use this for **integration (AI service, frontend)** and **development**. Base URL is assumed (e.g. `https://localhost:7xxx` or your deployed host). All request/response bodies are JSON unless noted.
+Complete reference for the Educational Companion backend API. Use this for **integration (AI service, frontend)** and **development**. **Backend base URL:** `http://localhost:5235` (development). All paths below are relative to this base. All request/response bodies are JSON unless noted.
 
 **General:**
 

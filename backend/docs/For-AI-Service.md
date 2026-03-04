@@ -6,7 +6,7 @@ This document is for the **AI service** (Python) that implements hybrid/content-
 
 ## 1. Base URL and protocol
 
-- Use the backend base URL (e.g. `http://localhost:5000` or your deployed URL). All endpoints are relative to this.
+- **Backend base URL:** `http://localhost:5235` (development). All endpoints are relative to this base.
 - Send **JSON** request bodies with `Content-Type: application/json`.
 - User ids in paths are **strings** (e.g. `user-1`). Resource and interaction ids are **UUIDs**.
 

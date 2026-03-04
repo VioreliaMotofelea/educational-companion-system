@@ -102,7 +102,7 @@ See **[EDM-Layer.md](./EDM-Layer.md)** for data sources, KPI definitions, and ma
 
 1. **Prerequisites**: .NET 8 SDK, PostgreSQL.
 2. **Configuration**: Set `ConnectionStrings:DefaultConnection` (e.g. in `appsettings.Development.json`).
-3. **Run**: From the backend folder, `dotnet run --project EducationalCompanion.Api`. In Development, migrations run and seed data is applied; Swagger UI is available (e.g. `/swagger`).
+3. **Run**: From the backend folder, `dotnet run --project EducationalCompanion.Api`. The API listens at **`http://localhost:5235`**. In Development, migrations run and seed data is applied; Swagger UI is available at `http://localhost:5235/swagger`.
 
 ---
 

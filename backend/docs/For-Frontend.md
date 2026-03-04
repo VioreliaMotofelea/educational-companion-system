@@ -6,7 +6,7 @@ This document helps the **frontend** team integrate with the Educational Compani
 
 ## 1. Base URL and protocol
 
-- Use the backend base URL (e.g. `https://localhost:7xxx` in development or your deployed URL). All paths below are relative.
+- **Backend base URL:** `http://localhost:5235` (development). All paths below are relative to this base.
 - **JSON** for request and response bodies. Send `Content-Type: application/json` when posting/putting.
 - **User id** in paths is a **string** (e.g. from your auth: `"user-1"`). Resource and interaction ids are **UUIDs**.
 
