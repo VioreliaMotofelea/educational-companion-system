@@ -4,3 +4,6 @@ requests
 numpy
 pandas
 scikit-learn
+sentence-transformers
+torch
+faiss-cpu
