@@ -14,7 +14,7 @@ public class RecommendationRepository : GenericRepository<Recommendation>, IReco
         int? limit,
         CancellationToken ct = default)
     {
-        var query = Query()
+        IQueryable<Recommendation> query = Query()
             .AsNoTracking()
             .Include(r => r.LearningResource)
             .Where(r => r.UserId == userId)

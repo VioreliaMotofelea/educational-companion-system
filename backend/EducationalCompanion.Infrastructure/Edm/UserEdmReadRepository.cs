@@ -1,5 +1,6 @@
 using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Infrastructure.Persistence;
+using TaskStatus = EducationalCompanion.Domain.Enums.TaskStatus;
 using Microsoft.EntityFrameworkCore;
 
 namespace EducationalCompanion.Infrastructure.Edm;
