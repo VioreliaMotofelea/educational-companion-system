@@ -15,15 +15,18 @@ public class UsersController : ControllerBase
     private readonly IUserInteractionService _interactionService;
     private readonly IUserProfileService _userProfileService;
     private readonly IUserEdmService _edmService;
+    private readonly IRecommendationService _recommendationService;
 
     public UsersController(
         IUserInteractionService interactionService,
         IUserProfileService userProfileService,
-        IUserEdmService edmService)
+        IUserEdmService edmService,
+        IRecommendationService recommendationService)
     {
         _interactionService = interactionService;
         _userProfileService = userProfileService;
         _edmService = edmService;
+        _recommendationService = recommendationService;
     }
 
     // Get full profile including preferences (for dashboard, AI aggregation)
@@ -68,7 +71,7 @@ public class UsersController : ControllerBase
 
     // ========== Educational Data Mining (EDM) Layer ==========
 
-    /// <summary>User analytics: summary and KPIs for dashboards and reporting.</summary>
+    // User analytics: summary and KPIs for dashboards and reporting.
     [HttpGet("{id}/analytics")]
     public async Task<ActionResult<UserAnalyticsResponse>> GetAnalytics(string id, CancellationToken ct)
     {
@@ -76,7 +79,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Personalized content recommendations for the user.</summary>
+    // Personalized content recommendations for the user (read).
     [HttpGet("{id}/recommendations")]
     public async Task<ActionResult<IReadOnlyList<UserRecommendationItemResponse>>> GetRecommendations(
         string id,
@@ -87,7 +90,18 @@ public class UsersController : ControllerBase
         return Ok(list);
     }
 
-    /// <summary>Topic mastery and suggested difficulty for adaptive learning.</summary>
+    // Create or replace recommendations for the user (from AI service).
+    [HttpPost("{id}/recommendations")]
+    public async Task<ActionResult<CreatedRecommendationsResponse>> CreateRecommendations(
+        string id,
+        [FromBody] CreateRecommendationsBatchRequest request,
+        CancellationToken ct)
+    {
+        var result = await _recommendationService.CreateBatchForUserAsync(id, request, ct);
+        return CreatedAtAction(nameof(GetRecommendations), new { id }, result);
+    }
+
+    // Topic mastery and suggested difficulty for adaptive learning.
     [HttpGet("{id}/mastery")]
     public async Task<ActionResult<UserMasteryResponse>> GetMastery(string id, CancellationToken ct)
     {

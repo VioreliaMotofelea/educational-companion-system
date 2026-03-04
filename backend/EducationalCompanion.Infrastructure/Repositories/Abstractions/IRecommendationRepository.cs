@@ -9,4 +9,7 @@ public interface IRecommendationRepository : IGenericRepository<Recommendation>
         string userId,
         int? limit,
         CancellationToken ct = default);
+
+    // Deletes all recommendations for a user (before replacing with new batch from AI).
+    Task<int> DeleteByUserIdAsync(string userId, CancellationToken ct = default);
 }

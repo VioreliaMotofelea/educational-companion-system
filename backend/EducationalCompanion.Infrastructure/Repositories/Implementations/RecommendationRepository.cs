@@ -26,4 +26,11 @@ public class RecommendationRepository : GenericRepository<Recommendation>, IReco
 
         return await query.ToListAsync(ct);
     }
+
+    public async Task<int> DeleteByUserIdAsync(string userId, CancellationToken ct = default)
+    {
+        return await Query()
+            .Where(r => r.UserId == userId)
+            .ExecuteDeleteAsync(ct);
+    }
 }
