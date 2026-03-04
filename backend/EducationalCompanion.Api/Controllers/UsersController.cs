@@ -1,3 +1,6 @@
+using EducationalCompanion.Api.Dtos.Analytics;
+using EducationalCompanion.Api.Dtos.Mastery;
+using EducationalCompanion.Api.Dtos.Recommendations;
 using EducationalCompanion.Api.Dtos.UserInteractions;
 using EducationalCompanion.Api.Dtos.Users;
 using EducationalCompanion.Api.Services.Abstractions;
@@ -11,13 +14,16 @@ public class UsersController : ControllerBase
 {
     private readonly IUserInteractionService _interactionService;
     private readonly IUserProfileService _userProfileService;
+    private readonly IUserEdmService _edmService;
 
     public UsersController(
         IUserInteractionService interactionService,
-        IUserProfileService userProfileService)
+        IUserProfileService userProfileService,
+        IUserEdmService edmService)
     {
         _interactionService = interactionService;
         _userProfileService = userProfileService;
+        _edmService = edmService;
     }
 
     // Get full profile including preferences (for dashboard, AI aggregation)
@@ -58,5 +64,34 @@ public class UsersController : ControllerBase
     {
         var xp = await _userProfileService.GetXpByUserIdAsync(id, ct);
         return Ok(xp);
+    }
+
+    // ========== Educational Data Mining (EDM) Layer ==========
+
+    /// <summary>User analytics: summary and KPIs for dashboards and reporting.</summary>
+    [HttpGet("{id}/analytics")]
+    public async Task<ActionResult<UserAnalyticsResponse>> GetAnalytics(string id, CancellationToken ct)
+    {
+        var result = await _edmService.GetAnalyticsAsync(id, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Personalized content recommendations for the user.</summary>
+    [HttpGet("{id}/recommendations")]
+    public async Task<ActionResult<IReadOnlyList<UserRecommendationItemResponse>>> GetRecommendations(
+        string id,
+        [FromQuery] int? limit,
+        CancellationToken ct)
+    {
+        var list = await _edmService.GetRecommendationsAsync(id, limit, ct);
+        return Ok(list);
+    }
+
+    /// <summary>Topic mastery and suggested difficulty for adaptive learning.</summary>
+    [HttpGet("{id}/mastery")]
+    public async Task<ActionResult<UserMasteryResponse>> GetMastery(string id, CancellationToken ct)
+    {
+        var result = await _edmService.GetMasteryAsync(id, ct);
+        return Ok(result);
     }
 }
