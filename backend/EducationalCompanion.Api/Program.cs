@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using EducationalCompanion.Infrastructure.Persistence;
 using EducationalCompanion.Infrastructure.Persistence.Seed;
 
+using EducationalCompanion.Infrastructure.Edm;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
 using EducationalCompanion.Infrastructure.Repositories.Implementations;
 
@@ -29,11 +30,15 @@ builder.Services.AddScoped<ILearningResourceRepository, LearningResourceReposito
 builder.Services.AddScoped<IUserInteractionRepository, UserInteractionRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
+builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+builder.Services.AddScoped<IUserEdmReadRepository, UserEdmReadRepository>();
 
 // Services
 builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();
 builder.Services.AddScoped<IUserInteractionService, UserInteractionService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IUserEdmService, UserEdmService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 
 var app = builder.Build();
 
