@@ -1,32 +1,78 @@
-def generate_content_based(user, interactions, resources):
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-    # Build resource lookup by id
+
+def generate_content_based(user, interactions, resources, top_k=20):
+
+    if not interactions:
+        return []
+
+    # Build resource lookup
     resource_by_id = {r["id"]: r for r in resources}
 
-    completed_topics = set()
+    # Build corpus (Title + Topic + Description)
+    corpus = [
+        f"{r['title']} {r['topic']} {r['description']}"
+        for r in resources
+    ]
 
-    for interaction in interactions:
+    vectorizer = TfidfVectorizer(stop_words="english")
+    tfidf_matrix = vectorizer.fit_transform(corpus)
 
-        if interaction["interactionType"] == "Completed":
+    # Get resources user completed
+    completed_ids = [
+        i["learningResourceId"]
+        for i in interactions
+        if i["interactionType"] == "Completed"
+    ]
 
-            resource_id = interaction["learningResourceId"]
+    if not completed_ids:
+        return []
 
-            resource = resource_by_id.get(resource_id)
+    # Compute similarity between completed resources and all resources
+    similarity_scores = np.zeros(len(resources))
 
-            if resource:
-                completed_topics.add(resource["topic"])
+    for completed_id in completed_ids:
+        if completed_id in resource_by_id:
+            idx = next(
+                i for i, r in enumerate(resources)
+                if r["id"] == completed_id
+            )
+
+            sim = cosine_similarity(
+                tfidf_matrix[idx],
+                tfidf_matrix
+            )[0]
+
+            similarity_scores += sim
+
+    # Average similarity
+    similarity_scores /= len(completed_ids)
+
+    # Rank
+    ranked_indices = np.argsort(similarity_scores)[::-1]
 
     recommendations = []
 
-    for r in resources:
+    for idx in ranked_indices:
 
-        if r["topic"] in completed_topics:
+        resource = resources[idx]
 
-            recommendations.append({
-                "learningResourceId": r["id"],
-                "score": 0.8,
-                "algorithmUsed": "ContentBased",
-                "explanation": f"Recommended because you studied {r['topic']}"
-            })
+        # Skip already completed
+        if resource["id"] in completed_ids:
+            continue
+
+        score = float(similarity_scores[idx])
+
+        recommendations.append({
+            "learningResourceId": resource["id"],
+            "score": round(score, 4),
+            "algorithmUsed": "ContentBased-TFIDF",
+            "explanation": f"Similar to resources you completed in {resource['topic']}"
+        })
+
+        if len(recommendations) >= top_k:
+            break
 
     return recommendations
