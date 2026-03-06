@@ -1,29 +1,98 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from clients.backend_client import (
     get_user,
     get_user_interactions,
+    get_all_interactions,
     get_resources,
-    push_recommendations
+    get_user_mastery,
+    push_recommendations,
 )
-
 from recommender.hybrid import generate_hybrid
 
 router = APIRouter()
 
-@router.post("/generate/{user_id}")
-def generate_recommendations(user_id: str):
 
-    user = get_user(user_id)
+class BackendRecommendationsResponse(BaseModel):
+    """Response from backend POST /api/users/{id}/recommendations."""
+
+    userId: str
+    createdCount: int
+    replacedExisting: bool
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "userId": "user-1",
+                    "createdCount": 10,
+                    "replacedExisting": True,
+                }
+            ]
+        }
+    }
+
+
+class GenerateRecommendationsResponse(BaseModel):
+    """Response of POST /generate/{user_id}: counts and backend confirmation."""
+
+    userId: str
+    generated: int
+    backendResponse: BackendRecommendationsResponse
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "userId": "user-1",
+                    "generated": 10,
+                    "backendResponse": {
+                        "userId": "user-1",
+                        "createdCount": 10,
+                        "replacedExisting": True,
+                    },
+                }
+            ]
+        }
+    }
+
+
+@router.post("/generate/{user_id}", response_model=GenerateRecommendationsResponse)
+def generate_recommendations(user_id: str):
+    """
+    Generate hybrid recommendations for a user and persist them to the backend.
+
+    Fetches: user profile, user interactions, all users' interactions (for collaborative),
+    resources, and EDM mastery (for difficulty adaptation). Combines TF-IDF content-based,
+    KNN collaborative, and difficulty match into final scores and writes to backend.
+    """
+    try:
+        user = get_user(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"User not found: {user_id}") from e
+
     interactions = get_user_interactions(user_id)
+    all_users_interactions = get_all_interactions()
     resources = get_resources()
 
-    recommendations = generate_hybrid(user, interactions, resources)
+    try:
+        mastery = get_user_mastery(user_id)
+    except Exception:
+        mastery = None  # New user or no mastery yet; difficulty uses fallback
+
+    recommendations = generate_hybrid(
+        user,
+        interactions,
+        all_users_interactions,
+        resources,
+        mastery,
+    )
 
     result = push_recommendations(user_id, recommendations)
 
     return {
         "userId": user_id,
         "generated": len(recommendations),
-        "backendResponse": result
+        "backendResponse": result,
     }
