@@ -1,7 +1,8 @@
-from typing import List
+from typing import Any, List
 
 import requests
 
+from api.exceptions import BackendError
 from config import BACKEND_BASE_URL
 from models.recommendation_models import (
     BackendRecommendationsResponse,
@@ -13,50 +14,102 @@ from models.recommendation_models import (
 REQUEST_TIMEOUT = 30
 
 
-def get_user(user_id: str):
+def _backend_call(
+    method: str,
+    url: str,
+    *,
+    json_body: Any = None,
+    timeout: int = REQUEST_TIMEOUT,
+) -> requests.Response:
+    """
+    Perform a backend HTTP call and raise BackendError on failure.
+    Centralizes timeout, connection, and HTTP error handling (like backend middleware).
+    """
+    try:
+        if method == "GET":
+            r = requests.get(url, timeout=timeout)
+        elif method == "POST":
+            r = requests.post(url, json=json_body, timeout=timeout)
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+
+        r.raise_for_status()
+        return r
+
+    except requests.Timeout as e:
+        raise BackendError(
+            504,
+            "Backend request timed out.",
+        ) from e
+    except requests.ConnectionError as e:
+        raise BackendError(
+            502,
+            "Could not reach backend service.",
+        ) from e
+    except requests.HTTPError as e:
+        status = e.response.status_code if e.response is not None else 500
+        detail = "Backend error."
+        if e.response is not None:
+            try:
+                body = e.response.json()
+                if isinstance(body, dict) and "error" in body:
+                    detail = body["error"]
+                elif isinstance(body, dict) and "Error" in body:
+                    detail = body["Error"]
+            except Exception:
+                pass
+        # Map backend 5xx to 502 so we don't expose internal backend status
+        if status >= 500:
+            status = 502
+            if detail == "Backend error.":
+                detail = "Backend unavailable or error."
+        raise BackendError(status, detail) from e
+    except requests.RequestException as e:
+        raise BackendError(
+            502,
+            "Backend request failed.",
+        ) from e
+
+
+def get_user(user_id: str) -> dict:
     """Get user profile and preferences (for content/difficulty adaptation)."""
-    r = requests.get(f"{BACKEND_BASE_URL}/api/users/{user_id}", timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
+    r = _backend_call("GET", f"{BACKEND_BASE_URL}/api/users/{user_id}")
     return r.json()
 
 
-def get_user_interactions(user_id: str):
+def get_user_interactions(user_id: str) -> list:
     """Get interactions for a single user (for content-based and filtering completed)."""
-    r = requests.get(
+    r = _backend_call(
+        "GET",
         f"{BACKEND_BASE_URL}/api/users/{user_id}/interactions",
-        timeout=REQUEST_TIMEOUT,
     )
-    r.raise_for_status()
     return r.json()
 
 
-def get_all_interactions():
+def get_all_interactions() -> list:
     """
     Get all users' interactions (no query params).
     Required for collaborative filtering user–resource matrix.
     """
-    r = requests.get(f"{BACKEND_BASE_URL}/api/interactions", timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
+    r = _backend_call("GET", f"{BACKEND_BASE_URL}/api/interactions")
     return r.json()
 
 
-def get_resources():
+def get_resources() -> list:
     """Get full learning resource catalog."""
-    r = requests.get(f"{BACKEND_BASE_URL}/api/resources", timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
+    r = _backend_call("GET", f"{BACKEND_BASE_URL}/api/resources")
     return r.json()
 
 
-def get_user_mastery(user_id: str):
+def get_user_mastery(user_id: str) -> dict:
     """
     Get EDM mastery: suggested difficulty (1–5) and per-topic mastery.
     Used for difficulty adaptation in hybrid scoring.
     """
-    r = requests.get(
+    r = _backend_call(
+        "GET",
         f"{BACKEND_BASE_URL}/api/users/{user_id}/mastery",
-        timeout=REQUEST_TIMEOUT,
     )
-    r.raise_for_status()
     return r.json()
 
 
@@ -69,10 +122,9 @@ def push_recommendations(
         recommendations=recommendations,
         replaceExisting=True,
     )
-    r = requests.post(
+    r = _backend_call(
+        "POST",
         f"{BACKEND_BASE_URL}/api/users/{user_id}/recommendations",
-        json=batch.model_dump(),
-        timeout=REQUEST_TIMEOUT,
+        json_body=batch.model_dump(),
     )
-    r.raise_for_status()
     return BackendRecommendationsResponse.model_validate(r.json())

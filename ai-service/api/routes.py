@@ -1,6 +1,8 @@
-import requests
-from fastapi import APIRouter, HTTPException
+import logging
 
+from fastapi import APIRouter
+
+from api.exceptions import BackendError
 from clients.backend_client import (
     get_user,
     get_user_interactions,
@@ -13,6 +15,7 @@ from models.recommendation_models import RecommendationGenerationResponse
 from recommender.hybrid import generate_hybrid
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/generate/{user_id}", response_model=RecommendationGenerationResponse)
@@ -24,32 +27,18 @@ def generate_recommendations(user_id: str):
     resources, and EDM mastery (for difficulty adaptation). Combines TF-IDF content-based,
     KNN collaborative, and difficulty match into final scores and writes to backend.
     """
-    try:
-        user = get_user(user_id)
-    except requests.HTTPError as e:
-        if e.response is not None and e.response.status_code == 404:
-            raise HTTPException(
-                status_code=404,
-                detail=f"User not found: {user_id}",
-            ) from e
-        raise HTTPException(
-            status_code=502,
-            detail="Backend unavailable or error while fetching user.",
-        ) from e
-    except requests.RequestException as e:
-        raise HTTPException(
-            status_code=502,
-            detail="Could not reach backend service.",
-        ) from e
+    logger.info("Generating recommendations for user_id=%s", user_id)
 
+    user = get_user(user_id)
     interactions = get_user_interactions(user_id)
     all_users_interactions = get_all_interactions()
     resources = get_resources()
 
     try:
         mastery = get_user_mastery(user_id)
-    except Exception:
-        mastery = None  # New user or no mastery yet; difficulty uses fallback
+    except BackendError:
+        logger.info("No mastery data for user_id=%s, using fallback", user_id)
+        mastery = None  # New user or no mastery yet; optional data
 
     recommendations = generate_hybrid(
         user,
@@ -61,6 +50,11 @@ def generate_recommendations(user_id: str):
 
     result = push_recommendations(user_id, recommendations)
 
+    logger.info(
+        "Generated %d recommendations for user_id=%s",
+        len(recommendations),
+        user_id,
+    )
     return RecommendationGenerationResponse(
         userId=user_id,
         generated=len(recommendations),
