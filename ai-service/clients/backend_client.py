@@ -1,5 +1,13 @@
+from typing import List
+
 import requests
+
 from config import BACKEND_BASE_URL
+from models.recommendation_models import (
+    BackendRecommendationsResponse,
+    RecommendationBatch,
+    RecommendationItem,
+)
 
 # Timeout for all backend HTTP calls (seconds)
 REQUEST_TIMEOUT = 30
@@ -52,16 +60,19 @@ def get_user_mastery(user_id: str):
     return r.json()
 
 
-def push_recommendations(user_id: str, recommendations):
+def push_recommendations(
+    user_id: str,
+    recommendations: List[RecommendationItem],
+) -> BackendRecommendationsResponse:
     """Write recommendations to backend (replace existing for user)."""
-    body = {
-        "recommendations": recommendations,
-        "replaceExisting": True,
-    }
+    batch = RecommendationBatch(
+        recommendations=recommendations,
+        replaceExisting=True,
+    )
     r = requests.post(
         f"{BACKEND_BASE_URL}/api/users/{user_id}/recommendations",
-        json=body,
+        json=batch.model_dump(),
         timeout=REQUEST_TIMEOUT,
     )
     r.raise_for_status()
-    return r.json()
+    return BackendRecommendationsResponse.model_validate(r.json())

@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
+from models.recommendation_models import RecommendationItem
+
 
 def generate_collaborative(
     user_id,
@@ -108,12 +110,13 @@ def generate_collaborative(
     recommendations = []
 
     for resource_id, score in ranked.head(top_k).items():
-
-        recommendations.append({
-            "learningResourceId": resource_id,
-            "score": round(float(score), 4),
-            "algorithmUsed": "Collaborative-Cosine-KNN",
-            "explanation": "Recommended because similar users completed this resource"
-        })
+        recommendations.append(
+            RecommendationItem(
+                learningResourceId=str(resource_id),
+                score=round(float(score), 4),
+                algorithmUsed="Collaborative-Cosine-KNN",
+                explanation="Recommended because similar users completed this resource",
+            )
+        )
 
     return recommendations

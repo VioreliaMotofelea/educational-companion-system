@@ -15,6 +15,7 @@ from config import (
     HYBRID_DIFFICULTY_WEIGHT,
     DEFAULT_RECOMMENDATION_LIMIT,
 )
+from models.recommendation_models import RecommendationItem
 from recommender.content_based import generate_content_based
 from recommender.collaborative import generate_collaborative
 
@@ -51,7 +52,7 @@ def generate_hybrid(
     content_recs = generate_content_based(
         user, interactions, resources, top_k=len(resources)
     )
-    content_map = {r["learningResourceId"]: r["score"] for r in content_recs}
+    content_map = {r.learningResourceId: r.score for r in content_recs}
 
     # ---- 2. Collaborative scores (KNN cosine) ----
     collab_recs = generate_collaborative(
@@ -60,7 +61,7 @@ def generate_hybrid(
         resources,
         top_k=len(resources),
     )
-    collab_map = {r["learningResourceId"]: r["score"] for r in collab_recs}
+    collab_map = {r.learningResourceId: r.score for r in collab_recs}
 
     # ---- 3. EDM difficulty: suggested level 1–5 ----
     suggested_difficulty = 1
@@ -114,21 +115,23 @@ def generate_hybrid(
     scored.sort(key=lambda x: x["final_score"], reverse=True)
     top = scored[:top_k]
 
-    recommendations = []
+    recommendations: list[RecommendationItem] = []
 
     for item in top:
         r = item["resource"]
         # Clamp to [0, 1] for backend contract (floating point safety)
         final = max(0.0, min(1.0, item["final_score"]))
-        recommendations.append({
-            "learningResourceId": r["id"],
-            "score": round(final, 4),
-            "algorithmUsed": "Hybrid",
-            "explanation": (
-                f"Content match {item['content_s']:.2f}, "
-                f"similar users {item['collab_s']:.2f}, "
-                f"difficulty fit {item['difficulty_match']:.2f} (suggested level {suggested_difficulty})."
-            ),
-        })
+        recommendations.append(
+            RecommendationItem(
+                learningResourceId=str(r["id"]),
+                score=round(final, 4),
+                algorithmUsed="Hybrid",
+                explanation=(
+                    f"Content match {item['content_s']:.2f}, "
+                    f"similar users {item['collab_s']:.2f}, "
+                    f"difficulty fit {item['difficulty_match']:.2f} (suggested level {suggested_difficulty})."
+                ),
+            )
+        )
 
     return recommendations

@@ -1,6 +1,5 @@
 import requests
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from clients.backend_client import (
     get_user,
@@ -10,56 +9,13 @@ from clients.backend_client import (
     get_user_mastery,
     push_recommendations,
 )
+from models.recommendation_models import RecommendationGenerationResponse
 from recommender.hybrid import generate_hybrid
 
 router = APIRouter()
 
 
-class BackendRecommendationsResponse(BaseModel):
-    """Response from backend POST /api/users/{id}/recommendations."""
-
-    userId: str
-    createdCount: int
-    replacedExisting: bool
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "userId": "user-1",
-                    "createdCount": 10,
-                    "replacedExisting": True,
-                }
-            ]
-        }
-    }
-
-
-class GenerateRecommendationsResponse(BaseModel):
-    """Response of POST /generate/{user_id}: counts and backend confirmation."""
-
-    userId: str
-    generated: int
-    backendResponse: BackendRecommendationsResponse
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "userId": "user-1",
-                    "generated": 10,
-                    "backendResponse": {
-                        "userId": "user-1",
-                        "createdCount": 10,
-                        "replacedExisting": True,
-                    },
-                }
-            ]
-        }
-    }
-
-
-@router.post("/generate/{user_id}", response_model=GenerateRecommendationsResponse)
+@router.post("/generate/{user_id}", response_model=RecommendationGenerationResponse)
 def generate_recommendations(user_id: str):
     """
     Generate hybrid recommendations for a user and persist them to the backend.
@@ -105,8 +61,8 @@ def generate_recommendations(user_id: str):
 
     result = push_recommendations(user_id, recommendations)
 
-    return {
-        "userId": user_id,
-        "generated": len(recommendations),
-        "backendResponse": result,
-    }
+    return RecommendationGenerationResponse(
+        userId=user_id,
+        generated=len(recommendations),
+        backendResponse=result,
+    )

@@ -2,6 +2,8 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from models.recommendation_models import RecommendationItem
+
 
 def generate_content_based(user, interactions, resources, top_k=20):
 
@@ -63,14 +65,15 @@ def generate_content_based(user, interactions, resources, top_k=20):
         if resource["id"] in completed_ids:
             continue
 
-        score = float(similarity_scores[idx])
-
-        recommendations.append({
-            "learningResourceId": resource["id"],
-            "score": round(score, 4),
-            "algorithmUsed": "ContentBased-TFIDF",
-            "explanation": f"Similar to resources you completed in {resource['topic']}"
-        })
+        score = round(float(similarity_scores[idx]), 4)
+        recommendations.append(
+            RecommendationItem(
+                learningResourceId=str(resource["id"]),
+                score=score,
+                algorithmUsed="ContentBased-TFIDF",
+                explanation=f"Similar to resources you completed in {resource.get('topic', '')}",
+            )
+        )
 
         if len(recommendations) >= top_k:
             break
