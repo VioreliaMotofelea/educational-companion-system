@@ -1,3 +1,4 @@
+import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -69,8 +70,21 @@ def generate_recommendations(user_id: str):
     """
     try:
         user = get_user(user_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"User not found: {user_id}") from e
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {user_id}",
+            ) from e
+        raise HTTPException(
+            status_code=502,
+            detail="Backend unavailable or error while fetching user.",
+        ) from e
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reach backend service.",
+        ) from e
 
     interactions = get_user_interactions(user_id)
     all_users_interactions = get_all_interactions()

@@ -118,9 +118,11 @@ def generate_hybrid(
 
     for item in top:
         r = item["resource"]
+        # Clamp to [0, 1] for backend contract (floating point safety)
+        final = max(0.0, min(1.0, item["final_score"]))
         recommendations.append({
             "learningResourceId": r["id"],
-            "score": round(item["final_score"], 4),
+            "score": round(final, 4),
             "algorithmUsed": "Hybrid",
             "explanation": (
                 f"Content match {item['content_s']:.2f}, "

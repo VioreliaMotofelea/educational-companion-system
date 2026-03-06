@@ -11,9 +11,9 @@ def generate_content_based(user, interactions, resources, top_k=20):
     # Build resource lookup
     resource_by_id = {r["id"]: r for r in resources}
 
-    # Build corpus (Title + Topic + Description)
+    # Build corpus (Title + Topic + Description); handle None description
     corpus = [
-        f"{r['title']} {r['topic']} {r['description']}"
+        f"{r.get('title', '')} {r.get('topic', '')} {r.get('description') or ''}"
         for r in resources
     ]
 
