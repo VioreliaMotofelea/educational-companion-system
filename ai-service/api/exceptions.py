@@ -1,9 +1,8 @@
 """
 API-layer exceptions for consistent error handling.
 
-Similar to the backend's ExceptionMiddleware: all backend-related failures
-are converted to BackendError so the global handler can return a uniform
-JSON response (detail + status code) without leaking internals or crashing.
+all backend-related failures are converted to BackendError so the global handler can return
+a uniform JSON response (detail + status code) without leaking internals or crashing.
 """
 
 

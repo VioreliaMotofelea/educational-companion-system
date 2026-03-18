@@ -23,7 +23,7 @@ def _backend_call(
 ) -> requests.Response:
     """
     Perform a backend HTTP call and raise BackendError on failure.
-    Centralizes timeout, connection, and HTTP error handling (like backend middleware).
+    Centralizes timeout, connection, and HTTP error handling.
     """
     try:
         if method == "GET":

@@ -21,13 +21,13 @@ The backend does not generate recommendations; it only stores and serves them. T
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Python 3.x |
-| API | FastAPI |
-| Server | Uvicorn (ASGI) |
+| Layer | Technology                                              |
+|-------|---------------------------------------------------------|
+| Runtime | Python 3.14.0                                           |
+| API | FastAPI                                                 |
+| Server | Uvicorn (ASGI)                                          |
 | ML / similarity | scikit-learn (TF-IDF, cosine similarity), pandas, numpy |
-| HTTP client | requests |
+| HTTP client | requests                                                |
 
 ---
 

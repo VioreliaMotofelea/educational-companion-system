@@ -26,7 +26,7 @@ app.include_router(router)
 
 @app.exception_handler(BackendError)
 def backend_error_handler(request: Request, exc: BackendError):
-    """Return consistent JSON error for backend failures (like backend's ExceptionMiddleware)."""
+    """Return consistent JSON error for backend failures"""
     logger.warning(
         "Backend error: status=%s detail=%s path=%s",
         exc.status_code,
@@ -41,9 +41,9 @@ def backend_error_handler(request: Request, exc: BackendError):
 
 @app.exception_handler(ValidationError)
 def validation_error_handler(request: Request, exc: ValidationError):
-    """Invalid data from backend or internal model; do not leak details. Skip request validation (422)."""
+    """Invalid data from backend or internal model; Skip request validation (422)."""
     if isinstance(exc, RequestValidationError):
-        raise exc  # Let FastAPI return 422 for invalid request body/params
+        raise exc  # FastAPI returns 422 for invalid request body/params
     logger.warning("Validation error: %s", exc)
     return JSONResponse(
         status_code=502,
