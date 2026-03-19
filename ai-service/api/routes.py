@@ -111,9 +111,26 @@ def register_recommendation_completion(payload: InteractionEventRequest):
 @router.get("/evaluation/report", response_model=EvaluationReportResponse)
 def get_evaluation_report(k: int = 5):
     logs = [log.model_dump() for log in load_logs()]
-    total_items = len(get_resources())
+    resources = get_resources()
+    total_items = len(resources)
+    resource_by_id = {str(r.get("id")): r for r in resources if r.get("id") is not None}
+    all_interactions = get_all_interactions()
+    interaction_counts = {}
+    for interaction in all_interactions:
+        item_id = interaction.get("learningResourceId")
+        if item_id is None:
+            continue
+        item_key = str(item_id)
+        interaction_counts[item_key] = interaction_counts.get(item_key, 0) + 1
+
     evaluator = Evaluator(k=k)
-    results = evaluator.evaluate(logs, total_items=total_items)
+    results = evaluator.evaluate(
+        logs,
+        total_items=total_items,
+        resource_by_id=resource_by_id,
+        interaction_counts=interaction_counts,
+        total_interactions=len(all_interactions),
+    )
 
     return EvaluationReportResponse(
         k=k,
@@ -124,4 +141,6 @@ def get_evaluation_report(k: int = 5):
         ctr=results.get("ctr", 0.0),
         completion_rate=results.get("completion_rate", 0.0),
         coverage=results.get("coverage", 0.0),
+        diversity=results.get("diversity", 0.0),
+        novelty=results.get("novelty", 0.0),
     )

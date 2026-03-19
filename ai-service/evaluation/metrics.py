@@ -94,3 +94,64 @@ def coverage(logs, total_items):
         recommended_items.update(log.get("recommended_items", []))
 
     return len(recommended_items) / total_items if total_items else 0
+
+
+# ----------------------------
+# DIVERSITY / NOVELTY
+# ----------------------------
+
+def _pair_dissimilarity(resource_a, resource_b):
+    topic_a = resource_a.get("topic")
+    topic_b = resource_b.get("topic")
+    content_a = resource_a.get("contentType")
+    content_b = resource_b.get("contentType")
+    diff_a = int(resource_a.get("difficulty", 1))
+    diff_b = int(resource_b.get("difficulty", 1))
+
+    topic_component = 1.0 if topic_a != topic_b else 0.0
+    content_component = 1.0 if content_a != content_b else 0.0
+    difficulty_component = min(4, abs(diff_a - diff_b)) / 4.0
+
+    return (topic_component + content_component + difficulty_component) / 3.0
+
+
+def diversity_at_k(recommended, resource_by_id, k):
+    items = recommended[:k]
+    if len(items) < 2:
+        return 0.0
+
+    dissimilarities = []
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            a = resource_by_id.get(items[i])
+            b = resource_by_id.get(items[j])
+            if not a or not b:
+                continue
+            dissimilarities.append(_pair_dissimilarity(a, b))
+
+    if not dissimilarities:
+        return 0.0
+    return sum(dissimilarities) / len(dissimilarities)
+
+
+def novelty_at_k(recommended, interaction_counts, total_interactions, catalog_size, k):
+    items = recommended[:k]
+    if not items or catalog_size <= 0:
+        return 0.0
+
+    denominator = total_interactions + catalog_size
+    if denominator <= 1:
+        return 0.0
+
+    max_self_information = -math.log2(1.0 / denominator)
+    if max_self_information <= 0:
+        return 0.0
+
+    novelty_scores = []
+    for item in items:
+        count = interaction_counts.get(item, 0)
+        probability = (count + 1) / denominator  # Laplace smoothing
+        self_information = -math.log2(probability)
+        novelty_scores.append(self_information / max_self_information)
+
+    return sum(novelty_scores) / len(novelty_scores)

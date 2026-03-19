@@ -32,3 +32,5 @@ class EvaluationReportResponse(BaseModel):
     ctr: float
     completion_rate: float
     coverage: float
+    diversity: float
+    novelty: float
