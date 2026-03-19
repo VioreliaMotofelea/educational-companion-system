@@ -11,6 +11,7 @@ The evaluation module measures recommendation quality after hybrid recommendatio
 It supports:
 - **Ranking metrics**: `precision@k`, `recall@k`, `ndcg@k`
 - **Behavioral metrics**: `ctr`, `completion_rate`
+- **Diversity metric**: `coverage`
 
 ---
 
@@ -50,6 +51,11 @@ Computed metrics:
 - `ndcg@k`: ranked gain with multi-level relevance (click vs completion)
 - `ctr`: total clicked / total recommended
 - `completion_rate`: total completed / total recommended
+- `coverage`: unique recommended items / total catalog items
+
+Coverage integration:
+- `total catalog items` is read from backend resources (`GET /api/resources`)
+- `unique recommended items` are aggregated from all logged sessions
 
 ### 3) API integration
 
@@ -68,6 +74,7 @@ Endpoints:
   - records completion on a recommended item
 - `GET /evaluation/report?k=5`
   - returns aggregated metrics from log file
+  - includes coverage for catalog diversity
 
 ---
 
@@ -139,6 +146,7 @@ Expected:
 - `ctr` > 0 after click registration
 - `completion_rate` > 0 after completion registration
 - `precision_at_k`, `recall_at_k`, and `ndcg_at_k` reflect top-k ranking quality
+- `coverage` increases when recommendations cover more distinct catalog items
 
 ---
 
@@ -149,6 +157,7 @@ To validate correctness quickly:
 - Adding one click should increase `ctr`.
 - Adding one completion should increase `completion_rate`.
 - Completing a high-ranked item should improve `ndcg@k` more than completing a low-ranked item.
+- More diverse recommendations across sessions should increase `coverage`.
 
 ---
 
@@ -159,3 +168,4 @@ To validate correctness quickly:
 - The current setup is appropriate for demonstrating both:
   - algorithmic ranking quality (`precision@k`, `recall@k`, `ndcg@k`)
   - behavioral impact (`ctr`, `completion_rate`)
+  - catalog diversity (`coverage`)

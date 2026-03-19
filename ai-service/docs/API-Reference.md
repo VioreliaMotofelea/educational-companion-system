@@ -97,6 +97,7 @@ Computes online evaluation metrics from persisted logs:
 - `ndcg@k`
 - `ctr`
 - `completion_rate`
+- `coverage`
 
 **Response 200 OK**
 
@@ -108,7 +109,8 @@ Computes online evaluation metrics from persisted logs:
   "recall_at_k": 0.28,
   "ndcg_at_k": 0.34,
   "ctr": 0.19,
-  "completion_rate": 0.12
+  "completion_rate": 0.12,
+  "coverage": 0.44
 }
 ```
 

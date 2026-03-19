@@ -111,8 +111,9 @@ def register_recommendation_completion(payload: InteractionEventRequest):
 @router.get("/evaluation/report", response_model=EvaluationReportResponse)
 def get_evaluation_report(k: int = 5):
     logs = [log.model_dump() for log in load_logs()]
+    total_items = len(get_resources())
     evaluator = Evaluator(k=k)
-    results = evaluator.evaluate(logs)
+    results = evaluator.evaluate(logs, total_items=total_items)
 
     return EvaluationReportResponse(
         k=k,
@@ -122,4 +123,5 @@ def get_evaluation_report(k: int = 5):
         ndcg_at_k=results.get("ndcg@k", 0.0),
         ctr=results.get("ctr", 0.0),
         completion_rate=results.get("completion_rate", 0.0),
+        coverage=results.get("coverage", 0.0),
     )

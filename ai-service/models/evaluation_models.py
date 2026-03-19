@@ -31,3 +31,4 @@ class EvaluationReportResponse(BaseModel):
     ndcg_at_k: float
     ctr: float
     completion_rate: float
+    coverage: float

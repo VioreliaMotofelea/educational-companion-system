@@ -4,6 +4,7 @@ from .metrics import (
     ndcg_at_k,
     ctr,
     completion_rate,
+    coverage,
 )
 
 
@@ -23,7 +24,7 @@ class Evaluator:
 
         return relevance
 
-    def evaluate(self, logs):
+    def evaluate(self, logs, total_items=None):
         precision_scores = []
         recall_scores = []
         ndcg_scores = []
@@ -53,5 +54,7 @@ class Evaluator:
             "ctr": ctr(logs),
             "completion_rate": completion_rate(logs),
         }
+        if total_items is not None:
+            results["coverage"] = coverage(logs, total_items)
 
         return results
