@@ -226,7 +226,32 @@ Potential next step:
 
 ---
 
-## 9) Thesis Positioning
+## 9) Offline Simulation Note (Interest vs Impact)
+
+File: `evaluation/offline_eval.py`
+
+For offline experiments, click and completion are simulated as a two-step funnel, not as identical signals:
+- **Interest**: relevant recommended items are clicked with probability `click_rate`.
+- **Impact**: clicked items are completed with probability `completion_given_click_rate`.
+
+This models the realistic behavior that not every click leads to completion.
+
+Default parameters:
+- `click_rate = 0.8`
+- `non_relevant_click_rate = 0.05` (low noise)
+- `completion_given_click_rate = 0.5`
+- `completion_given_non_relevant_click_rate = 0.1` (low noise)
+- `seed = 42` (for reproducible runs)
+
+Interpretation:
+- Higher `click_rate` simulates stronger initial interest.
+- Higher `completion_given_click_rate` simulates better pedagogical fit and learning impact.
+- `non_relevant_click_rate` and `completion_given_non_relevant_click_rate` control exploration/errors.
+  Keep them low to avoid unrealistic noise in offline simulation.
+
+---
+
+## 10) Thesis Positioning
 
 This module is suitable for a bachelor thesis because it supports:
 - **online evaluation from real runtime interactions**
