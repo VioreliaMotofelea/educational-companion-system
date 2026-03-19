@@ -62,6 +62,7 @@ htmlcov/
 # FastAPI / Uvicorn
 ########################################
 uvicorn.log
+ai-service/evaluation/*.json
 
 ########################################
 # Node / React / Frontend
