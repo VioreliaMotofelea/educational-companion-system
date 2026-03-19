@@ -1,10 +1,5 @@
-import json
 from .evaluator import Evaluator
-
-
-def load_logs(path):
-    with open(path, "r") as f:
-        return json.load(f)
+from .tracking import load_logs
 
 
 def online_evaluation(log_file_path, k=5):

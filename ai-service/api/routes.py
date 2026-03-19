@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from api.exceptions import BackendError
 from clients.backend_client import (
@@ -10,6 +10,18 @@ from clients.backend_client import (
     get_resources,
     get_user_mastery,
     push_recommendations,
+)
+from evaluation.evaluator import Evaluator
+from evaluation.tracking import (
+    append_recommendation_session,
+    load_logs,
+    register_click,
+    register_completion,
+)
+from models.evaluation_models import (
+    EvaluationReportResponse,
+    InteractionEventRequest,
+    InteractionEventResponse,
 )
 from models.recommendation_models import RecommendationGenerationResponse
 from recommender.hybrid import generate_hybrid
@@ -49,6 +61,10 @@ def generate_recommendations(user_id: str):
     )
 
     result = push_recommendations(user_id, recommendations)
+    append_recommendation_session(
+        user_id,
+        [r.learningResourceId for r in recommendations],
+    )
 
     logger.info(
         "Generated %d recommendations for user_id=%s",
@@ -59,4 +75,51 @@ def generate_recommendations(user_id: str):
         userId=user_id,
         generated=len(recommendations),
         backendResponse=result,
+    )
+
+
+@router.post("/evaluation/click", response_model=InteractionEventResponse)
+def register_recommendation_click(payload: InteractionEventRequest):
+    found = register_click(payload.user_id, payload.item_id)
+    if not found:
+        raise HTTPException(
+            status_code=404,
+            detail="No recommendation session found for this user/item.",
+        )
+    return InteractionEventResponse(
+        message="Click event recorded.",
+        user_id=payload.user_id,
+        item_id=payload.item_id,
+    )
+
+
+@router.post("/evaluation/completion", response_model=InteractionEventResponse)
+def register_recommendation_completion(payload: InteractionEventRequest):
+    found = register_completion(payload.user_id, payload.item_id)
+    if not found:
+        raise HTTPException(
+            status_code=404,
+            detail="No recommendation session found for this user/item.",
+        )
+    return InteractionEventResponse(
+        message="Completion event recorded.",
+        user_id=payload.user_id,
+        item_id=payload.item_id,
+    )
+
+
+@router.get("/evaluation/report", response_model=EvaluationReportResponse)
+def get_evaluation_report(k: int = 5):
+    logs = [log.model_dump() for log in load_logs()]
+    evaluator = Evaluator(k=k)
+    results = evaluator.evaluate(logs)
+
+    return EvaluationReportResponse(
+        k=k,
+        logs_count=len(logs),
+        precision_at_k=results.get("precision@k", 0.0),
+        recall_at_k=results.get("recall@k", 0.0),
+        ndcg_at_k=results.get("ndcg@k", 0.0),
+        ctr=results.get("ctr", 0.0),
+        completion_rate=results.get("completion_rate", 0.0),
     )

@@ -1,6 +1,6 @@
 # AI Service — API Reference
 
-This document describes the **AI service** HTTP API: the endpoint used to trigger recommendation generation. It is intended for **backend** and **frontend** developers who call the AI service.
+This document describes the **AI service** HTTP API: recommendation generation and evaluation endpoints. It is intended for **backend** and **frontend** developers who call the AI service.
 
 **Base URL (development):** `http://localhost:8001`. All paths below are relative to this base. Responses are JSON unless noted.
 
@@ -53,6 +53,64 @@ Generates hybrid recommendations for the given user and **persists them to the b
 | **500** | Unexpected internal error in the AI service (e.g. recommendation logic failure). Body: `{"detail": "An unexpected internal server error occurred."}`. |
 
 Validation errors (e.g. invalid request) return **422** with a structured `detail` array (FastAPI default).
+
+---
+
+## Evaluation Endpoints
+
+### POST `/evaluation/click`
+
+Registers a click event for a recommended item in the latest matching recommendation session.
+
+**Request body**
+
+```json
+{
+  "user_id": "user-2",
+  "item_id": "resource-uuid"
+}
+```
+
+**Response 200 OK**
+
+```json
+{
+  "message": "Click event recorded.",
+  "user_id": "user-2",
+  "item_id": "resource-uuid"
+}
+```
+
+Returns **404** if no recommendation session exists for that `(user_id, item_id)`.
+
+### POST `/evaluation/completion`
+
+Registers a completion event for a recommended item in the latest matching recommendation session.
+
+Same request/response shape as `/evaluation/click` with message `"Completion event recorded."`.
+
+### GET `/evaluation/report?k=5`
+
+Computes online evaluation metrics from persisted logs:
+- `precision@k`
+- `recall@k`
+- `ndcg@k`
+- `ctr`
+- `completion_rate`
+
+**Response 200 OK**
+
+```json
+{
+  "k": 5,
+  "logs_count": 24,
+  "precision_at_k": 0.31,
+  "recall_at_k": 0.28,
+  "ndcg_at_k": 0.34,
+  "ctr": 0.19,
+  "completion_rate": 0.12
+}
+```
 
 ---
 
