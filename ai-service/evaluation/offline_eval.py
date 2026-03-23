@@ -26,7 +26,7 @@ def offline_evaluation(
     seed=42,
 ):
     """
-    model: recommender model (your AI service)
+    model: recommender model (the AI service)
     test_data: dict {user_id: ground_truth_items}
     click_rate: probability a relevant recommendation gets clicked
     non_relevant_click_rate: probability a non-relevant recommendation gets clicked (noise)
