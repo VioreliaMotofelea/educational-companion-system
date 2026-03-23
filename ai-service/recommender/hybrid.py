@@ -64,14 +64,20 @@ def generate_hybrid(
     collab_map = {r.learningResourceId: r.score for r in collab_recs}
 
     # ---- 3. EDM difficulty: suggested level 1–5 ----
-    suggested_difficulty = 1
+    # If EDM mastery is missing, fall back to user's preferredDifficulty.
+    suggested_difficulty = None
     if mastery:
-        suggested_difficulty = mastery.get("suggestedDifficulty", 1)
+        suggested_difficulty = mastery.get("suggestedDifficulty", None)
+
     # Fallback to user preference if no mastery yet
     if suggested_difficulty is None and user.get("preferences"):
         pref = user["preferences"].get("preferredDifficulty")
         if pref is not None:
             suggested_difficulty = pref
+
+    if suggested_difficulty is None:
+        suggested_difficulty = 1
+
     suggested_difficulty = max(1, min(5, int(suggested_difficulty)))
 
     # ---- 4. Normalize content and collab to [0, 1] ----
