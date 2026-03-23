@@ -88,3 +88,4 @@ public class ExceptionMiddleware
         await context.Response.WriteAsync(json);
     }
 }
+
