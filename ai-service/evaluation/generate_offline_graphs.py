@@ -24,6 +24,7 @@ AI_SERVICE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(AI_SERVICE_ROOT))
 
 from evaluation.evaluator import Evaluator
+from evaluation.item_ids import to_item_ids
 
 
 MetricName = str
@@ -39,18 +40,6 @@ METRICS_ORDER: List[MetricName] = [
     "diversity",
     "novelty",
 ]
-
-
-def _to_item_ids(recommendations: Iterable) -> List[str]:
-    item_ids: List[str] = []
-    for rec in recommendations:
-        if hasattr(rec, "learningResourceId"):
-            item_ids.append(str(rec.learningResourceId))
-        elif isinstance(rec, dict) and "learningResourceId" in rec:
-            item_ids.append(str(rec["learningResourceId"]))
-        else:
-            item_ids.append(str(rec))
-    return item_ids
 
 
 @dataclass(frozen=True)
@@ -213,7 +202,7 @@ def simulate_click_completion_logs(
 
     for user_id, ground_truth in test_data.items():
         recommendations = model.recommend(user_id)
-        recommended_items = _to_item_ids(recommendations)
+        recommended_items = to_item_ids(recommendations)
         ground_truth_set = {str(item) for item in ground_truth}
 
         clicked_items: List[str] = []

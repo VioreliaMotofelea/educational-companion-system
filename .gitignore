@@ -63,6 +63,8 @@ htmlcov/
 ########################################
 uvicorn.log
 ai-service/evaluation/*.json
+ai-service/evaluation/plots/**/*.png
+ai-service/evaluation/plots/**/*.csv
 
 ########################################
 # Node / React / Frontend

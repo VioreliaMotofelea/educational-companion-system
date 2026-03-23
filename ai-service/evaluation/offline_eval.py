@@ -1,18 +1,7 @@
 import random
 
 from .evaluator import Evaluator
-
-
-def _to_item_ids(recommendations):
-    item_ids = []
-    for rec in recommendations:
-        if hasattr(rec, "learningResourceId"):
-            item_ids.append(str(rec.learningResourceId))
-        elif isinstance(rec, dict) and "learningResourceId" in rec:
-            item_ids.append(str(rec["learningResourceId"]))
-        else:
-            item_ids.append(str(rec))
-    return item_ids
+from .item_ids import to_item_ids
 
 
 def offline_evaluation(
@@ -40,7 +29,7 @@ def offline_evaluation(
 
     for user_id, ground_truth in test_data.items():
         recommendations = model.recommend(user_id)
-        recommended_items = _to_item_ids(recommendations)
+        recommended_items = to_item_ids(recommendations)
         ground_truth_set = {str(item) for item in ground_truth}
 
         # Realistic funnel with controlled noise:
