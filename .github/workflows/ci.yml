@@ -28,7 +28,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Run dotnet test
+      - name: Run dotnet unit tests
         run: |
           dotnet test backend/EducationalCompanion.Tests/EducationalCompanion.Tests.csproj -c Release
+      - name: Run dotnet integration tests (SQLite)
+        run: |
+          dotnet test backend/EducationalCompanion.Tests.Integration/EducationalCompanion.Tests.Integration.csproj -c Release
 
