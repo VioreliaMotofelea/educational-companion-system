@@ -6,10 +6,20 @@ from models.recommendation_models import (
     RecommendationGenerationResponse,
     RecommendationItem,
 )
+from models.evaluation_models import (
+    EvaluationReportResponse,
+    InteractionEventRequest,
+    InteractionEventResponse,
+    RecommendationLog,
+)
 
 __all__ = [
     "BackendRecommendationsResponse",
     "RecommendationBatch",
     "RecommendationGenerationResponse",
     "RecommendationItem",
+    "EvaluationReportResponse",
+    "InteractionEventRequest",
+    "InteractionEventResponse",
+    "RecommendationLog",
 ]

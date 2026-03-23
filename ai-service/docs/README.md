@@ -66,6 +66,7 @@ The AI service is organized into clear layers (each directory is a Python packag
 | **[README.md](./README.md)** (this file) | Everyone | Overview, stack, architecture, what’s implemented |
 | **[Hybrid-Recommendation-Algorithm.md](./Hybrid-Recommendation-Algorithm.md)** | Thesis, Developers | Academic-style description of the hybrid algorithm (content-based, collaborative, EDM, formula, explainability) |
 | **[API-Reference.md](./API-Reference.md)** | Backend, Frontend, Developers | AI service endpoint, request/response, error codes |
+| **[Evaluation-Module.md](./Evaluation-Module.md)** | Thesis, Developers | Evaluation module design, metrics, integration flow, and end-to-end testing guide |
 
 ---
 
@@ -83,3 +84,4 @@ The AI service is organized into clear layers (each directory is a Python packag
 - Use **README.md** for the high-level role of the AI service and its architecture.
 - Use **Hybrid-Recommendation-Algorithm.md** for the formal description of the recommendation algorithm (content-based, collaborative, EDM, hybrid formula, explainability).
 - Use **API-Reference.md** when describing how the backend or frontend triggers and consumes recommendations.
+- Use **Evaluation-Module.md** when describing how recommendation quality is measured and how metrics are validated.
