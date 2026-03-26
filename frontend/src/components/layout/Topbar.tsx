@@ -1,4 +1,20 @@
+import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
+
 export default function Topbar() {
+  const { pathname } = useLocation();
+  const { userId } = useCurrentUser();
+
+  const pageTitle = useMemo(() => {
+    if (pathname === "/") return "Dashboard";
+    if (pathname === "/recommendations") return "Recommendations";
+    if (pathname === "/tasks") return "Tasks";
+    if (pathname === "/calendar") return "Calendar";
+    if (pathname === "/profile") return "Profile";
+    return "Educational Companion";
+  }, [pathname]);
+
   return (
     <div
       style={{
@@ -10,8 +26,8 @@ export default function Topbar() {
         padding: "0 20px",
       }}
     >
-      <h3>Dashboard</h3>
-      <div>User</div>
+      <h3>{pageTitle}</h3>
+      <div>{userId}</div>
     </div>
   );
 }

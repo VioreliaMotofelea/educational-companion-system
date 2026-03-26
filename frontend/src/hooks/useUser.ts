@@ -6,7 +6,19 @@ export function useUser(userId: string) {
   const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    getUserProfile(userId).then(setUser).catch(() => setUser(null));
+    let cancelled = false;
+
+    getUserProfile(userId)
+      .then((profile) => {
+        if (!cancelled) setUser(profile);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return user;

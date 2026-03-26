@@ -1,6 +1,9 @@
 import type { Analytics, Mastery, Recommendation, UserProfile, UserXp } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL?.trim();
+if (!API_BASE) {
+  throw new Error("Missing VITE_API_URL. Configure frontend environment variables.");
+}
 
 type ApiErrorResponse = {
   status: number;
@@ -26,6 +29,16 @@ export type UserInteraction = {
   rating: number | null;
   timeSpentMinutes: number | null;
   createdAtUtc: string;
+};
+
+export type LearningResource = {
+  id: string;
+  title: string;
+  description: string | null;
+  topic: string;
+  difficulty: number;
+  estimatedDurationMinutes: number;
+  contentType: "Article" | "Video" | "Quiz";
 };
 
 async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
@@ -67,7 +80,7 @@ export const getRecommendations = (userId: string, limit = 5): Promise<Recommend
 
 
 export const getResources = () =>
-  fetcher<unknown[]>(`${API_BASE}/resources`);
+  fetcher<LearningResource[]>(`${API_BASE}/resources`);
 
 
 export const createInteraction = (payload: CreateInteractionRequest): Promise<UserInteraction> =>

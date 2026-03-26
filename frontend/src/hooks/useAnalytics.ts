@@ -6,7 +6,19 @@ export function useAnalytics(userId: string) {
   const [data, setData] = useState<Analytics | null>(null);
 
   useEffect(() => {
-    getUserAnalytics(userId).then(setData).catch(() => setData(null));
+    let cancelled = false;
+
+    getUserAnalytics(userId)
+      .then((analytics) => {
+        if (!cancelled) setData(analytics);
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return data;

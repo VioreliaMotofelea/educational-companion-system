@@ -1,10 +1,10 @@
 import { useRecommendations } from "../../hooks/useRecommendations";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import RecommendationCard from "../recommendations/RecommendationCard";
 
-const USER_ID = "11111111-1111-1111-1111-111111111111"; // temporar
-
 export default function RecommendationsPreview() {
-  const { data, loading } = useRecommendations(USER_ID);
+  const { userId } = useCurrentUser();
+  const { data, loading } = useRecommendations(userId);
 
   if (loading) return <p>Loading...</p>;
 
@@ -18,6 +18,7 @@ export default function RecommendationsPreview() {
           title={rec.resource.title}
           reason={rec.explanation}
           resourceId={rec.resource.id}
+          userId={userId}
         />
       ))}
     </div>

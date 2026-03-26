@@ -14,6 +14,7 @@ export default function AppRoutes() {
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="*" element={<DashboardPage />} />
       </Routes>
     </BrowserRouter>
   );
