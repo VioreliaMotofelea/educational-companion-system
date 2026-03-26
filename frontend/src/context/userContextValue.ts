@@ -6,7 +6,7 @@ export type UserContextValue = {
 
 const DEFAULT_USER_ID = (
   import.meta.env.VITE_DEFAULT_USER_ID ??
-  "11111111-1111-1111-1111-111111111111"
+  "user-1"
 ).trim();
 
 export const UserContext = createContext<UserContextValue>({
