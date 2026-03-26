@@ -11,7 +11,7 @@ export type Recommendation = {
     description: string | null;
     topic: string;
     difficulty: number;
-    contentType: string;
+    contentType: "Article" | "Video" | "Quiz";
     estimatedDurationMinutes: number;
   };
 };

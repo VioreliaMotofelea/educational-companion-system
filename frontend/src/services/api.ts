@@ -59,6 +59,11 @@ async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
 
+  // Backend uses 204 for some update operations (e.g. preferences).
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
@@ -86,6 +91,24 @@ export const getResources = () =>
 export const createInteraction = (payload: CreateInteractionRequest): Promise<UserInteraction> =>
   fetcher<UserInteraction>(`${API_BASE}/interactions`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+export type UpdateUserPreferencesRequest = {
+  preferredDifficulty?: number | null;
+  preferredContentTypesCsv?: string | null;
+  preferredTopicsCsv?: string | null;
+};
+
+export const updateUserPreferences = (
+  userId: string,
+  payload: UpdateUserPreferencesRequest,
+): Promise<void> =>
+  fetcher<void>(`${API_BASE}/users/${userId}/preferences`, {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },

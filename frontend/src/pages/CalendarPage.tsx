@@ -1,9 +1,10 @@
 import AppLayout from "../components/layout/AppLayout";
+import TodayPlan from "../components/dashboard/TodayPlan";
 
 export default function CalendarPage() {
   return (
     <AppLayout>
-      <h1>Calendar</h1>
+      <TodayPlan title="AI suggested schedule" />
     </AppLayout>
   );
 }

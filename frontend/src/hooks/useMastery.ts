@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
-import { getUserProfile } from "../services/api";
-import type { UserProfile } from "../types";
+import { getUserMastery } from "../services/api";
+import type { Mastery } from "../types";
 
-export function useUser(userId: string) {
-  const [refreshTick, setRefreshTick] = useState(0);
+export function useMastery(userId: string) {
   const [state, setState] = useState<{
     loadedForUserId: string | null;
-    user: UserProfile | null;
+    data: Mastery | null;
     loading: boolean;
     error: string | null;
   }>({
     loadedForUserId: null,
-    user: null,
+    data: null,
     loading: true,
     error: null,
   });
@@ -19,12 +18,12 @@ export function useUser(userId: string) {
   useEffect(() => {
     let cancelled = false;
 
-    getUserProfile(userId)
-      .then((profile) => {
+    getUserMastery(userId)
+      .then((m) => {
         if (cancelled) return;
         setState({
           loadedForUserId: userId,
-          user: profile,
+          data: m,
           loading: false,
           error: null,
         });
@@ -33,23 +32,21 @@ export function useUser(userId: string) {
         if (cancelled) return;
         setState({
           loadedForUserId: userId,
-          user: null,
+          data: null,
           loading: false,
-          error: "Could not load profile.",
+          error: "Could not load mastery.",
         });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [userId, refreshTick]);
-
-  const refresh = () => setRefreshTick((t) => t + 1);
+  }, [userId]);
 
   return {
-    user: state.loadedForUserId === userId ? state.user : null,
+    data: state.loadedForUserId === userId ? state.data : null,
     loading: state.loadedForUserId !== userId || state.loading,
     error: state.loadedForUserId === userId ? state.error : null,
-    refresh,
   };
 }
+

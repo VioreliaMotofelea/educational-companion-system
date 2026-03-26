@@ -8,7 +8,7 @@ type UseRecommendationsState = {
   loading: boolean;
 };
 
-export function useRecommendations(userId: string) {
+export function useRecommendations(userId: string, limit = 5) {
   const [state, setState] = useState<UseRecommendationsState>({
     userId: null,
     data: [],
@@ -18,7 +18,7 @@ export function useRecommendations(userId: string) {
   useEffect(() => {
     let cancelled = false;
 
-    getRecommendations(userId)
+    getRecommendations(userId, limit)
       .then((data) => {
         if (cancelled) return;
         setState({
@@ -39,7 +39,7 @@ export function useRecommendations(userId: string) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, limit]);
 
   return {
     data: state.userId === userId ? state.data : [],

@@ -180,13 +180,22 @@ Working (connected correctly to backend APIs today):
 
 - Dashboard renders:
   - “Recommended for you” using `useRecommendations` + `RecommendationCard`
-  - Recommendation CTA writes an interaction using `POST /api/interactions`
+  - “Today’s plan / AI suggested schedule” (client-side composition from recommendations + `dailyAvailableMinutes`)
+  - “Progres (basic)” + “Quick stats” from `GET /api/users/{id}/analytics`
+- Recommendations page renders the same recommendation list and supports CTA tracking (`POST /api/interactions`).
+- Tasks & Scheduling page shows task counts from analytics and also renders the AI suggested schedule.
+- Calendar page renders the same AI suggested schedule.
+- Profile page:
+  - loads `GET /api/users/{id}` (profile + preferences)
+  - loads `GET /api/users/{id}/analytics` (stats / behavior summary)
+  - loads `GET /api/users/{id}/mastery` (suggested difficulty + reason)
+  - saves preferences via `PUT /api/users/{id}/preferences`
 - Existing shell (sidebar/topbar/layout) is wired with a shared user context.
 
 Placeholder / not yet integrated (expected next):
 
-- Tasks & Scheduling (calendar/timeline/suggested schedule)
-- Profile sections beyond placeholder pages
+- “Comportament” based on `GET /api/users/{id}/interactions` (currently optional).
+- Schedule/task backend endpoints (planned; once available, replace client-side schedule composition with backend-provided schedule).
 
 ## 7. Next steps for consistency
 
