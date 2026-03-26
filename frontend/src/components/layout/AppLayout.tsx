@@ -7,7 +7,14 @@ type Props = {
 
 export default function AppLayout({ children }: Props) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        width: "100%",
+        background: "var(--bg-0)",
+      }}
+    >
       <Sidebar />
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <Topbar />

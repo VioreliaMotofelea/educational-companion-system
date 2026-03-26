@@ -19,11 +19,13 @@ export default function Topbar() {
     <div
       style={{
         height: "60px",
-        borderBottom: "1px solid #ddd",
+        borderBottom: "1px solid var(--border)",
+        background: "rgba(255, 255, 255, 0.02)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 20px",
+        color: "var(--text)",
       }}
     >
       <h3>{pageTitle}</h3>
