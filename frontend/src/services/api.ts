@@ -1,4 +1,12 @@
-import type { Analytics, Mastery, Recommendation, UserProfile, UserXp } from "../types";
+import type {
+  Analytics,
+  CreateInteractionRequest,
+  Mastery,
+  Recommendation,
+  UserInteraction,
+  UserProfile,
+  UserXp,
+} from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL?.trim();
 if (!API_BASE) {
@@ -9,26 +17,6 @@ type ApiErrorResponse = {
   status: number;
   error: string;
   timestamp: string;
-};
-
-export type InteractionType = "Viewed" | "Completed" | "Rated" | "Skipped";
-
-export type CreateInteractionRequest = {
-  userId: string;
-  learningResourceId: string;
-  interactionType: InteractionType;
-  rating?: number;
-  timeSpentMinutes?: number;
-};
-
-export type UserInteraction = {
-  id: string;
-  userId: string;
-  learningResourceId: string;
-  interactionType: InteractionType;
-  rating: number | null;
-  timeSpentMinutes: number | null;
-  createdAtUtc: string;
 };
 
 export type LearningResource = {
@@ -96,6 +84,9 @@ export const createInteraction = (payload: CreateInteractionRequest): Promise<Us
     },
     body: JSON.stringify(payload),
   });
+
+export const getUserInteractions = (userId: string): Promise<UserInteraction[]> =>
+  fetcher<UserInteraction[]>(`${API_BASE}/users/${userId}/interactions`);
 
 export type UpdateUserPreferencesRequest = {
   preferredDifficulty?: number | null;

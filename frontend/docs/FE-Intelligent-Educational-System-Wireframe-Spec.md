@@ -86,6 +86,12 @@ Backend data used:
 - `GET /api/users/{id}/xp` (level + xp)
 - `GET /api/users/{id}/mastery` for `suggestedDifficulty` + `suggestedDifficultyReason`
 - (Optional for “comportament” once UI is implemented) `GET /api/users/{id}/interactions`
+- “comportament / lista recenta” uses `GET /api/users/{id}/interactions` and shows:
+  - `interactionType`
+  - `learningResourceId`
+  - `rating` (if present)
+  - `timeSpentMinutes` (if present)
+  - `createdAtUtc`
 
 ## 2. Conceptual UX Flow (how user makes decisions)
 

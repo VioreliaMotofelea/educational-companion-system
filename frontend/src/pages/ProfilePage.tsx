@@ -5,12 +5,19 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUser } from "../hooks/useUser";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useMastery } from "../hooks/useMastery";
+import { useInteractions } from "../hooks/useInteractions";
 import { updateUserPreferences } from "../services/api";
 import type { UserPreferences } from "../types";
+import { formatUtcDateTime } from "../utils/formatDate";
 
 function toNullIfEmpty(value: string) {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function truncateId(value: string, max = 10) {
+  if (value.length <= max) return value;
+  return `${value.slice(0, 8)}…${value.slice(-2)}`;
 }
 
 export default function ProfilePage() {
@@ -18,6 +25,7 @@ export default function ProfilePage() {
   const { user, loading, error, refresh } = useUser(userId);
   const analytics = useAnalytics(userId);
   const mastery = useMastery(userId);
+  const interactions = useInteractions(userId, 8);
 
   const initialPrefs = user?.preferences ?? null;
 
@@ -185,6 +193,66 @@ export default function ProfilePage() {
             ) : (
               <p style={{ marginTop: 10, color: "var(--muted)" }}>Loading analytics...</p>
             )}
+
+            <div style={{ marginTop: 18 }}>
+              <h4 style={{ margin: 0, fontSize: 14 }}>Recent activity</h4>
+
+              {interactions.loading ? (
+                <p style={{ marginTop: 10, color: "var(--muted)" }}>Loading recent activity...</p>
+              ) : interactions.error ? (
+                <p style={{ marginTop: 10, color: "rgba(239, 68, 68, 0.95)" }}>{interactions.error}</p>
+              ) : interactions.data.length === 0 ? (
+                <p style={{ marginTop: 10, color: "var(--muted)" }}>No interactions yet.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0 0", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {interactions.data.map((it) => {
+                    const typeColor =
+                      it.interactionType === "Completed"
+                        ? "var(--color-progress-600)"
+                        : it.interactionType === "Rated"
+                          ? "var(--color-recommend-600)"
+                          : it.interactionType === "Viewed"
+                            ? "var(--color-ai-600)"
+                            : "var(--muted)";
+
+                    return (
+                      <li
+                        key={it.id}
+                        style={{
+                          border: "1px solid var(--border)",
+                          background: "rgba(255,255,255,0.03)",
+                          borderRadius: "var(--radius-md)",
+                          padding: 12,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                          <div>
+                            <div style={{ fontWeight: 900, color: typeColor }}>{it.interactionType}</div>
+                            <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                              Resource: <b>{truncateId(it.learningResourceId)}</b>
+                            </div>
+                            {it.rating != null ? (
+                              <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                                Rating: <b>{it.rating}</b>/5
+                              </div>
+                            ) : null}
+                            {it.timeSpentMinutes != null ? (
+                              <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                                Time spent: <b>{it.timeSpentMinutes}</b> min
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div style={{ textAlign: "right", color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>
+                            {formatUtcDateTime(it.createdAtUtc)}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         </section>
       </div>
