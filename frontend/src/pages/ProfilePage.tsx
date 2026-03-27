@@ -6,6 +6,7 @@ import { useUser } from "../hooks/useUser";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useMastery } from "../hooks/useMastery";
 import { useInteractions } from "../hooks/useInteractions";
+import { useResources } from "../hooks/useResources";
 import { updateUserPreferences } from "../services/api";
 import type { UserPreferences } from "../types";
 import { formatUtcDateTime } from "../utils/formatDate";
@@ -26,6 +27,15 @@ export default function ProfilePage() {
   const analytics = useAnalytics(userId);
   const mastery = useMastery(userId);
   const interactions = useInteractions(userId, 8);
+  const resources = useResources();
+
+  const resourceTitleById = useMemo(() => {
+    const map = new Map<string, { title: string; topic: string }>();
+    for (const r of resources.data) {
+      map.set(r.id, { title: r.title, topic: r.topic });
+    }
+    return map;
+  }, [resources.data]);
 
   const initialPrefs = user?.preferences ?? null;
 
@@ -229,7 +239,17 @@ export default function ProfilePage() {
                           <div>
                             <div style={{ fontWeight: 900, color: typeColor }}>{it.interactionType}</div>
                             <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                              Resource: <b>{truncateId(it.learningResourceId)}</b>
+                              Resource:{" "}
+                              <b>
+                                {resourceTitleById.get(it.learningResourceId)?.title ??
+                                  truncateId(it.learningResourceId)}
+                              </b>
+                              {resourceTitleById.get(it.learningResourceId)?.topic ? (
+                                <span style={{ color: "var(--muted)" }}>
+                                  {" "}
+                                  • {resourceTitleById.get(it.learningResourceId)?.topic}
+                                </span>
+                              ) : null}
                             </div>
                             {it.rating != null ? (
                               <div style={{ color: "var(--muted)", marginTop: 6 }}>

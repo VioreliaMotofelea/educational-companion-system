@@ -20,6 +20,9 @@ export default function RecommendationsPreview() {
             reason={rec.explanation}
             resourceId={rec.resource.id}
             userId={userId}
+            difficulty={rec.resource.difficulty}
+            durationMinutes={rec.resource.estimatedDurationMinutes}
+            score={rec.score}
           />
         ))}
       </div>
