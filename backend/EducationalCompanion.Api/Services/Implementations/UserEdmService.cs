@@ -7,6 +7,7 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Edm;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using System.Globalization;
 
 namespace EducationalCompanion.Api.Services.Implementations;
 
@@ -102,8 +103,8 @@ public class UserEdmService : IUserEdmService
     private static string BuildAnalyticsSummary(UserAnalyticsKpisData kpis)
     {
         var parts = new List<string>();
-        if (kpis.TotalResourcesViewed > 0)
-            parts.Add($"{kpis.TotalResourcesCompleted} of {kpis.TotalResourcesViewed} viewed resources completed ({kpis.CompletionRatePercent}% completion rate).");
+        if (kpis.TotalResourcesViewed + kpis.TotalResourcesCompleted > 0)
+            parts.Add($"{kpis.TotalResourcesCompleted} completed resources across your engaged set ({kpis.CompletionRatePercent}% completion rate).");
         if (kpis.TotalTimeSpentMinutes > 0)
             parts.Add($"Total study time: {kpis.TotalTimeSpentMinutes} minutes.");
         if (kpis.TotalXpEarned > 0)
@@ -153,7 +154,9 @@ public class UserEdmService : IUserEdmService
             ? (int)Math.Min(MaxDifficulty, Math.Ceiling(avgDifficulty) + 1)
             : (int)Math.Round(avgDifficulty);
         suggested = Math.Clamp(suggested, MinDifficulty, MaxDifficulty);
-        var reason = $"Based on {topicData.Count} topic(s); average completed difficulty {avgDifficulty:F1}, rating {avgRating:F1}. Suggested next: {suggested}.";
+        var avgDifficultyText = avgDifficulty.ToString("F1", CultureInfo.InvariantCulture);
+        var avgRatingText = avgRating.ToString("F1", CultureInfo.InvariantCulture);
+        var reason = $"Based on {topicData.Count} topic(s); average completed difficulty {avgDifficultyText}, rating {avgRatingText}. Suggested next: {suggested}.";
         return (suggested, reason);
     }
 }
