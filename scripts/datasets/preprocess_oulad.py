@@ -91,6 +91,7 @@ def difficulty_from_activity(activity_type: str) -> int:
 def load_assessment_course_scores(raw_dir: Path) -> Dict[Tuple[str, str, int], float]:
     assessments = pd.read_csv(raw_dir / "assessments.csv")
     student_assessment = pd.read_csv(raw_dir / "studentAssessment.csv")
+    student_assessment["score"] = pd.to_numeric(student_assessment["score"], errors="coerce")
 
     merged = student_assessment.merge(
         assessments[["id_assessment", "code_module", "code_presentation"]],
