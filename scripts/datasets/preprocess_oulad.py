@@ -88,6 +88,35 @@ def difficulty_from_activity(activity_type: str) -> int:
     return mapping.get(activity, 3)
 
 
+def activity_label(activity_type: str) -> str:
+    activity = (activity_type or "").strip().lower()
+    labels = {
+        "forumng": "Discussion forum",
+        "oucontent": "Course study material",
+        "homepage": "Course homepage",
+        "resource": "Additional learning resource",
+        "subpage": "Topic page",
+        "quiz": "Practice quiz",
+        "externalquiz": "External quiz",
+        "glossary": "Glossary activity",
+        "dataplus": "Data activity",
+        "dualpane": "Interactive activity",
+        "htmlactivity": "HTML learning activity",
+    }
+    return labels.get(activity, activity_type.strip().title() if activity_type else "Learning activity")
+
+
+def week_label(week_from: object, week_to: object) -> str:
+    start = safe_int(week_from, 0)
+    end = safe_int(week_to, 0)
+    if start <= 0 and end <= 0:
+        return ""
+    if start > 0 and end > 0 and start != end:
+        return f"Weeks {start}-{end}"
+    week = start if start > 0 else end
+    return f"Week {week}"
+
+
 def load_assessment_course_scores(raw_dir: Path) -> Dict[Tuple[str, str, int], float]:
     assessments = pd.read_csv(raw_dir / "assessments.csv")
     student_assessment = pd.read_csv(raw_dir / "studentAssessment.csv")
@@ -228,13 +257,20 @@ def build_resources(
         avg_clicks = stat.total_clicks / stat.count_pairs if stat.count_pairs else 0.0
         estimated_duration = int(max(5, min(180, round(avg_clicks * 0.5))))
 
-        title = f"{row.activity_type} resource {int(row.id_site)}"
+        label = activity_label(str(row.activity_type))
+        weeks = week_label(getattr(row, "week_from", 0), getattr(row, "week_to", 0))
+        resource_code = int(row.id_site)
+        if weeks:
+            title = f"{weeks} {label} - Module {row.code_module}"
+        else:
+            title = f"{label} - Module {row.code_module} #{resource_code}"
         description = (
-            f"OULAD learning activity ({row.activity_type}) "
-            f"for module {row.code_module}-{row.code_presentation}. "
-            f"Active between weeks {safe_int(getattr(row, 'week_from', 0), 0)} and "
-            f"{safe_int(getattr(row, 'week_to', 0), 0)}."
+            f"{label} from the OULAD virtual learning environment. "
+            f"Module: {row.code_module}, presentation: {row.code_presentation}, "
+            f"activity type: {row.activity_type}, resource id: {resource_code}."
         )
+        if weeks:
+            description += f" The activity is associated with {weeks.lower()} of the course timeline."
 
         resources.append(
             {

@@ -332,7 +332,7 @@ def main() -> None:
             if rid:
                 completed_counts[rid] += 1
                 interaction_counts[rid] += 1
-    total_interactions = len(train)
+    total_interactions = sum(interaction_counts.values())
 
     users = [u for u, rel in relevant_by_user.items() if len(rel) >= max(1, args.min_test_completed)]
     users = sorted(users)

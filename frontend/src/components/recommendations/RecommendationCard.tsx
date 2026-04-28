@@ -4,6 +4,9 @@ import { useState } from "react";
 type Props = {
   title: string;
   reason: string;
+  description?: string | null;
+  topic?: string;
+  contentType?: "Article" | "Video" | "Quiz";
   resourceId: string;
   userId: string;
   difficulty: number;
@@ -19,9 +22,17 @@ function difficultyLabel(difficulty: number) {
   return "Advanced";
 }
 
+function shortenText(text: string, maxLength: number) {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 1)}...`;
+}
+
 export default function RecommendationCard({
   title,
   reason,
+  description,
+  topic,
+  contentType,
   resourceId,
   userId,
   difficulty,
@@ -31,6 +42,18 @@ export default function RecommendationCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  const reasonMatch = reason.match(
+    /Content match ([0-9.]+), similar users ([0-9.]+), difficulty fit ([0-9.]+) \(suggested level ([0-9]+)\)\.?/
+  );
+  const friendlyReason = reasonMatch
+    ? `Recommended because it matches resources you completed and fits your suggested level ${reasonMatch[4]}.`
+    : reason;
+  const technicalReason = reasonMatch
+    ? `Content ${reasonMatch[1]} · Similar users ${reasonMatch[2]} · Difficulty ${reasonMatch[3]}`
+    : null;
+  const subtitle = `${topic ?? "General"} · OULAD #${resourceId.slice(0, 8)}${contentType ? ` · ${contentType}` : ""}`;
+  const compactDescription = description ? shortenText(description, 140) : null;
 
   const handleStart = async () => {
     setError(null);
@@ -104,7 +127,14 @@ export default function RecommendationCard({
         </div>
       </div>
       <h3 style={{ margin: 0 }}>{title}</h3>
-      <p style={{ margin: "8px 0 0 0", color: "var(--muted)" }}>💡 {reason}</p>
+      <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 13 }}>{subtitle}</p>
+      <p style={{ margin: "8px 0 0 0", color: "var(--muted)" }}>💡 {friendlyReason}</p>
+      {technicalReason ? (
+        <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 12, opacity: 0.9 }}>{technicalReason}</p>
+      ) : null}
+      {compactDescription ? (
+        <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 12, opacity: 0.85 }}>{compactDescription}</p>
+      ) : null}
       {error ? <p style={{ color: "rgba(239, 68, 68, 0.95)", margin: "10px 0 0 0" }}>{error}</p> : null}
       {ok ? <p style={{ color: "rgba(34, 197, 94, 0.95)", margin: "10px 0 0 0" }}>{ok}</p> : null}
 
