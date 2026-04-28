@@ -132,7 +132,9 @@ public static class DatabaseSeeder
 
         // Load profiles and resources for relationships (by UserId and by title)
         var profilesByUserId = await context.UserProfiles.ToDictionaryAsync(p => p.UserId);
-        var resourcesByTitle = await context.LearningResources.ToDictionaryAsync(r => r.Title);
+        var resourcesByTitle = (await context.LearningResources.ToListAsync())
+            .GroupBy(r => r.Title)
+            .ToDictionary(g => g.Key, g => g.OrderBy(r => r.Id).First());
 
         // =========================
         // 5. USER INTERACTIONS (UserProfile, LearningResource)
