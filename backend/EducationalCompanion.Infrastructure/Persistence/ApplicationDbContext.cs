@@ -1,9 +1,11 @@
 ﻿using EducationalCompanion.Domain.Entities;
+using EducationalCompanion.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace EducationalCompanion.Infrastructure.Persistence;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext<AppUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -23,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserInteraction> UserInteractions => Set<UserInteraction>();
 
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<GamificationEvent> GamificationEvents => Set<GamificationEvent>();
     public DbSet<Badge> Badges => Set<Badge>();
