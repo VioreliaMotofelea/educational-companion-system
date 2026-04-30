@@ -10,6 +10,7 @@ type UseInteractionsState = {
 };
 
 export function useInteractions(userId: string, limit = 10) {
+  const [refreshTick, setRefreshTick] = useState(0);
   const [state, setState] = useState<UseInteractionsState>({
     userId: null,
     data: [],
@@ -43,7 +44,13 @@ export function useInteractions(userId: string, limit = 10) {
     return () => {
       cancelled = true;
     };
-  }, [userId, limit]);
+  }, [userId, limit, refreshTick]);
+
+  useEffect(() => {
+    const onInteractionUpdated = () => setRefreshTick((x) => x + 1);
+    window.addEventListener("interaction-updated", onInteractionUpdated);
+    return () => window.removeEventListener("interaction-updated", onInteractionUpdated);
+  }, []);
 
   return {
     data: state.userId === userId ? state.data : [],
