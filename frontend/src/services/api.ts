@@ -3,6 +3,7 @@ import type {
   CreateInteractionRequest,
   Mastery,
   Recommendation,
+  StudyTask,
   UserInteraction,
   UserProfile,
   UserXp,
@@ -173,6 +174,22 @@ export const createInteraction = (payload: CreateInteractionRequest): Promise<Us
 
 export const getUserInteractions = (userId: string): Promise<UserInteraction[]> =>
   fetcher<UserInteraction[]>(`${API_BASE}/users/${userId}/interactions`);
+
+export const getUserTasks = (userId: string): Promise<StudyTask[]> =>
+  fetcher<StudyTask[]>(`${API_BASE}/users/${userId}/tasks`);
+
+export const updateUserTaskStatus = (
+  userId: string,
+  taskId: string,
+  status: "Pending" | "Completed" | "Overdue",
+): Promise<StudyTask> =>
+  fetcher<StudyTask>(`${API_BASE}/users/${userId}/tasks/${taskId}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
 
 export type UpdateUserPreferencesRequest = {
   preferredDifficulty?: number | null;

@@ -16,15 +16,18 @@ public class RecommendationService : IRecommendationService
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
     private readonly IRecommendationRepository _recommendationRepo;
+    private readonly IStudyTaskService _studyTaskService;
 
     public RecommendationService(
         IUserProfileRepository userProfileRepo,
         ILearningResourceRepository learningResourceRepo,
-        IRecommendationRepository recommendationRepo)
+        IRecommendationRepository recommendationRepo,
+        IStudyTaskService studyTaskService)
     {
         _userProfileRepo = userProfileRepo;
         _learningResourceRepo = learningResourceRepo;
         _recommendationRepo = recommendationRepo;
+        _studyTaskService = studyTaskService;
     }
 
     public async Task<CreatedRecommendationsResponse> CreateBatchForUserAsync(
@@ -65,6 +68,10 @@ public class RecommendationService : IRecommendationService
             await _recommendationRepo.AddAsync(entity, ct);
 
         await _recommendationRepo.SaveChangesAsync(ct);
+        await _studyTaskService.EnsurePendingTasksForRecommendationsAsync(
+            userId,
+            entities.Select(e => e.LearningResourceId).ToList(),
+            ct);
 
         return new CreatedRecommendationsResponse(userId, entities.Count, replaced);
     }

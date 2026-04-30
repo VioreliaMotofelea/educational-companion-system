@@ -16,8 +16,6 @@ using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Api.Services.Implementations;
 using EducationalCompanion.Api.Middleware;
 using EducationalCompanion.Api.Options;
-using EducationalCompanion.Api.Services.Abstractions;
-using EducationalCompanion.Api.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +101,7 @@ builder.Services.AddScoped<IUserEdmService, UserEdmService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAiGenerationService, AiGenerationService>();
+builder.Services.AddScoped<IStudyTaskService, StudyTaskService>();
 
 var app = builder.Build();
 

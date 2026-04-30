@@ -1,6 +1,7 @@
 using EducationalCompanion.Api.Dtos.Analytics;
 using EducationalCompanion.Api.Dtos.Mastery;
 using EducationalCompanion.Api.Dtos.Recommendations;
+using EducationalCompanion.Api.Dtos.Tasks;
 using EducationalCompanion.Api.Dtos.UserInteractions;
 using EducationalCompanion.Api.Dtos.Users;
 using EducationalCompanion.Api.Services.Abstractions;
@@ -20,19 +21,22 @@ public class UsersController : ControllerBase
     private readonly IUserEdmService _edmService;
     private readonly IRecommendationService _recommendationService;
     private readonly IAiGenerationService _aiGenerationService;
+    private readonly IStudyTaskService _studyTaskService;
 
     public UsersController(
         IUserInteractionService interactionService,
         IUserProfileService userProfileService,
         IUserEdmService edmService,
         IRecommendationService recommendationService,
-        IAiGenerationService aiGenerationService)
+        IAiGenerationService aiGenerationService,
+        IStudyTaskService studyTaskService)
     {
         _interactionService = interactionService;
         _userProfileService = userProfileService;
         _edmService = edmService;
         _recommendationService = recommendationService;
         _aiGenerationService = aiGenerationService;
+        _studyTaskService = studyTaskService;
     }
 
     // Get full profile including preferences (for dashboard, AI aggregation)
@@ -133,6 +137,37 @@ public class UsersController : ControllerBase
         EnsureCallerMatchesUserId(id);
         var result = await _edmService.GetMasteryAsync(id, ct);
         return Ok(result);
+    }
+
+    [HttpGet("{id}/tasks")]
+    public async Task<ActionResult<IReadOnlyList<StudyTaskResponse>>> GetTasks(string id, CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        var tasks = await _studyTaskService.GetByUserAsync(id, ct);
+        return Ok(tasks);
+    }
+
+    [HttpPost("{id}/tasks")]
+    public async Task<ActionResult<StudyTaskResponse>> CreateTask(
+        string id,
+        [FromBody] CreateStudyTaskRequest request,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        var task = await _studyTaskService.CreateForUserAsync(id, request, ct);
+        return Ok(task);
+    }
+
+    [HttpPatch("{id}/tasks/{taskId:guid}/status")]
+    public async Task<ActionResult<StudyTaskResponse>> UpdateTaskStatus(
+        string id,
+        Guid taskId,
+        [FromBody] UpdateStudyTaskStatusRequest request,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        var task = await _studyTaskService.UpdateStatusAsync(id, taskId, request, ct);
+        return Ok(task);
     }
 
     private void EnsureCallerMatchesUserId(string userId)
