@@ -9,6 +9,7 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Tests.Tests.Unit.Fakes;
 using Xunit;
 
 namespace EducationalCompanion.Tests.Tests.Unit.Services;
@@ -20,7 +21,7 @@ public class UserInteractionServiceTests
     {
         var interactionRepo = new FakeUserInteractionRepository();
         var learningRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -41,7 +42,7 @@ public class UserInteractionServiceTests
         {
             [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
         });
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -62,7 +63,7 @@ public class UserInteractionServiceTests
         {
             [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
         });
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -85,7 +86,7 @@ public class UserInteractionServiceTests
         {
             [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
         });
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -106,7 +107,7 @@ public class UserInteractionServiceTests
         {
             [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
         });
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -127,7 +128,7 @@ public class UserInteractionServiceTests
         {
             [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
         });
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         var request = new CreateUserInteractionRequest(
             UserId: "user-1",
@@ -153,7 +154,7 @@ public class UserInteractionServiceTests
     {
         var interactionRepo = new FakeUserInteractionRepository();
         var learningRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         await Assert.ThrowsAsync<UserInteractionNotFoundException>(() =>
             service.UpdateAsync(Guid.NewGuid(), new UpdateUserInteractionRequest(
@@ -178,7 +179,7 @@ public class UserInteractionServiceTests
 
         var interactionRepo = new FakeUserInteractionRepository(new Dictionary<Guid, UserInteraction> { [existingId] = existing });
         var learningRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new UserInteractionService(interactionRepo, learningRepo);
+        var service = new UserInteractionService(interactionRepo, learningRepo, new NoOpStudyTaskService());
 
         await service.UpdateAsync(existingId, new UpdateUserInteractionRequest(
             InteractionType: "Completed",

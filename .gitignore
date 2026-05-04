@@ -99,3 +99,10 @@ docker-compose.override.yml
 *.swp
 *.bak
 *.tmp
+
+########################################
+# Datasets (local-only, large files)
+########################################
+datasets/oulad/raw/
+datasets/oulad/processed/
+*.zip

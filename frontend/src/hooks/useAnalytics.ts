@@ -4,6 +4,7 @@ import type { Analytics } from "../types";
 
 export function useAnalytics(userId: string) {
   const [data, setData] = useState<Analytics | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,7 +20,18 @@ export function useAnalytics(userId: string) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, refreshTick]);
+
+  useEffect(() => {
+    const onInteractionUpdated = () => setRefreshTick((x) => x + 1);
+    const onTaskUpdated = () => setRefreshTick((x) => x + 1);
+    window.addEventListener("interaction-updated", onInteractionUpdated);
+    window.addEventListener("task-updated", onTaskUpdated);
+    return () => {
+      window.removeEventListener("interaction-updated", onInteractionUpdated);
+      window.removeEventListener("task-updated", onTaskUpdated);
+    };
+  }, []);
 
   return data;
 }

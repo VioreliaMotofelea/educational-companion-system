@@ -13,16 +13,17 @@ export default function ProgressOverview() {
     );
   }
 
-  const { completionRatePercent, tasksCompleted, tasksPending, tasksOverdue, totalTimeSpentMinutes, totalXpEarned, currentLevel } =
-    analytics.kpis;
+  const { tasksCompleted, tasksPending, tasksOverdue, totalTimeSpentMinutes, totalXpEarned, currentLevel } = analytics.kpis;
+  const totalTasks = tasksCompleted + tasksPending + tasksOverdue;
+  const taskCompletionRatePercent = totalTasks > 0 ? (tasksCompleted / totalTasks) * 100 : 0;
 
   return (
     <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
       <div style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Progres</h3>
+        <h3 style={{ marginTop: 0 }}>Task progress</h3>
         <div style={{ display: "flex", gap: 10, alignItems: "baseline", marginTop: 8 }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--color-progress-600)" }}>{completionRatePercent.toFixed(0)}%</div>
-          <div style={{ color: "var(--muted)" }}>completion rate</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--color-progress-600)" }}>{taskCompletionRatePercent.toFixed(0)}%</div>
+          <div style={{ color: "var(--muted)" }}>task completion rate</div>
         </div>
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
           <div>Completed: <b style={{ color: "var(--color-progress-600)" }}>{tasksCompleted}</b></div>

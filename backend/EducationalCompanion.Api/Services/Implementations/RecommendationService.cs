@@ -12,19 +12,24 @@ public class RecommendationService : IRecommendationService
     private const double MaxScore = 1.0;
     private const int MaxAlgorithmUsedLength = 50;
     private const int MaxExplanationLength = 1000;
+    private const double AutoTaskMinScore = 0.65;
+    private const int AutoTaskFallbackCount = 2;
 
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
     private readonly IRecommendationRepository _recommendationRepo;
+    private readonly IStudyTaskService _studyTaskService;
 
     public RecommendationService(
         IUserProfileRepository userProfileRepo,
         ILearningResourceRepository learningResourceRepo,
-        IRecommendationRepository recommendationRepo)
+        IRecommendationRepository recommendationRepo,
+        IStudyTaskService studyTaskService)
     {
         _userProfileRepo = userProfileRepo;
         _learningResourceRepo = learningResourceRepo;
         _recommendationRepo = recommendationRepo;
+        _studyTaskService = studyTaskService;
     }
 
     public async Task<CreatedRecommendationsResponse> CreateBatchForUserAsync(
@@ -65,6 +70,25 @@ public class RecommendationService : IRecommendationService
             await _recommendationRepo.AddAsync(entity, ct);
 
         await _recommendationRepo.SaveChangesAsync(ct);
+        var taskCandidateIds = entities
+            .Where(e => e.Score >= AutoTaskMinScore)
+            .OrderByDescending(e => e.Score)
+            .Select(e => e.LearningResourceId)
+            .ToList();
+
+        if (taskCandidateIds.Count == 0)
+        {
+            taskCandidateIds = entities
+                .OrderByDescending(e => e.Score)
+                .Take(AutoTaskFallbackCount)
+                .Select(e => e.LearningResourceId)
+                .ToList();
+        }
+
+        await _studyTaskService.EnsurePendingTasksForRecommendationsAsync(
+            userId,
+            taskCandidateIds,
+            ct);
 
         return new CreatedRecommendationsResponse(userId, entities.Count, replaced);
     }

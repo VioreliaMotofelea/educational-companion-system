@@ -9,6 +9,7 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Tests.Tests.Unit.Fakes;
 using Xunit;
 
 namespace EducationalCompanion.Tests.Tests.Unit.Services;
@@ -29,7 +30,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(Recommendations: null!, ReplaceExisting: true);
 
@@ -46,7 +47,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(new List<CreateRecommendationItemRequest>(), ReplaceExisting: true);
 
@@ -63,7 +64,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -82,7 +83,7 @@ public class RecommendationServiceTests
         var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -104,7 +105,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -128,7 +129,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -158,7 +159,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -190,7 +191,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -219,7 +220,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -241,7 +242,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var tooLongAlgo = new string('a', 51); // Max is 50
         var request = new CreateRecommendationsBatchRequest(
@@ -267,7 +268,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -289,7 +290,7 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(userRepo, resourceRepo, recRepo, new NoOpStudyTaskService());
 
         var tooLongExplanation = new string('b', 1001); // Max is 1000
         var request = new CreateRecommendationsBatchRequest(

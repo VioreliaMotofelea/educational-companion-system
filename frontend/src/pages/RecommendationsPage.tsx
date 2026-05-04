@@ -23,6 +23,9 @@ export default function RecommendationsPage() {
               key={rec.recommendationId}
               title={rec.resource.title}
               reason={rec.explanation}
+              description={rec.resource.description}
+              topic={rec.resource.topic}
+              contentType={rec.resource.contentType}
               resourceId={rec.resource.id}
               userId={userId}
               difficulty={rec.resource.difficulty}
