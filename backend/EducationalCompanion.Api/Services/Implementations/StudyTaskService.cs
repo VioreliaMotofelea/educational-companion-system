@@ -92,6 +92,38 @@ public class StudyTaskService : IStudyTaskService
         return Map(entity, title);
     }
 
+    public async Task<StudyTaskResponse> UpdateAsync(string userId, Guid taskId, UpdateStudyTaskRequest request, CancellationToken ct = default)
+    {
+        await EnsureUserExistsAsync(userId, ct);
+        if (request.LearningResourceId.HasValue)
+            await EnsureLearningResourceExistsAsync(request.LearningResourceId.Value, ct);
+
+        var task = await _dbContext.StudyTasks.FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId, ct);
+        if (task is null)
+            throw new StudyTaskNotFoundException(taskId);
+        if (task.LearningResourceId.HasValue)
+            throw new ValidationException("This task is linked to a recommendation resource and cannot be edited.");
+
+        task.LearningResourceId = request.LearningResourceId;
+        task.Title = request.Title.Trim();
+        task.Notes = request.Notes;
+        task.DeadlineUtc = request.DeadlineUtc;
+        task.EstimatedMinutes = request.EstimatedMinutes;
+        task.Priority = request.Priority;
+        task.UpdatedAtUtc = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(ct);
+
+        var title = task.LearningResourceId.HasValue
+            ? await _dbContext.LearningResources
+                .AsNoTracking()
+                .Where(r => r.Id == task.LearningResourceId.Value)
+                .Select(r => r.Title)
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        return Map(task, title);
+    }
+
     public async Task<StudyTaskResponse> UpdateStatusAsync(string userId, Guid taskId, UpdateStudyTaskStatusRequest request, CancellationToken ct = default)
     {
         await EnsureUserExistsAsync(userId, ct);
@@ -172,6 +204,18 @@ public class StudyTaskService : IStudyTaskService
 
         pending.Status = DomainTaskStatus.Completed;
         pending.UpdatedAtUtc = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(string userId, Guid taskId, CancellationToken ct = default)
+    {
+        await EnsureUserExistsAsync(userId, ct);
+
+        var task = await _dbContext.StudyTasks.FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId, ct);
+        if (task is null)
+            throw new StudyTaskNotFoundException(taskId);
+
+        _dbContext.StudyTasks.Remove(task);
         await _dbContext.SaveChangesAsync(ct);
     }
 

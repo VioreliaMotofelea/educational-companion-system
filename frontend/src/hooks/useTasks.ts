@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getUserTasks, updateUserTaskStatus } from "../services/api";
+import { createUserTask, deleteUserTask, getUserTasks, updateUserTask, updateUserTaskStatus, type CreateStudyTaskRequest, type UpdateStudyTaskRequest } from "../services/api";
 import type { StudyTask, TaskStatus } from "../types";
 
 type UseTasksState = {
@@ -53,10 +53,30 @@ export function useTasks(userId: string) {
   }, []);
 
   const refresh = () => setRefreshTick((x) => x + 1);
+  const emitTaskUpdated = () => window.dispatchEvent(new Event("task-updated"));
 
   const setTaskStatus = async (taskId: string, status: TaskStatus) => {
     await updateUserTaskStatus(userId, taskId, status);
     refresh();
+    emitTaskUpdated();
+  };
+
+  const createTask = async (payload: CreateStudyTaskRequest) => {
+    await createUserTask(userId, payload);
+    refresh();
+    emitTaskUpdated();
+  };
+
+  const editTask = async (taskId: string, payload: UpdateStudyTaskRequest) => {
+    await updateUserTask(userId, taskId, payload);
+    refresh();
+    emitTaskUpdated();
+  };
+
+  const removeTask = async (taskId: string) => {
+    await deleteUserTask(userId, taskId);
+    refresh();
+    emitTaskUpdated();
   };
 
   return {
@@ -65,6 +85,9 @@ export function useTasks(userId: string) {
     error: state.userId === userId ? state.error : null,
     refresh,
     setTaskStatus,
+    createTask,
+    editTask,
+    removeTask,
   };
 }
 

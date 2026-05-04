@@ -24,8 +24,13 @@ export function useAnalytics(userId: string) {
 
   useEffect(() => {
     const onInteractionUpdated = () => setRefreshTick((x) => x + 1);
+    const onTaskUpdated = () => setRefreshTick((x) => x + 1);
     window.addEventListener("interaction-updated", onInteractionUpdated);
-    return () => window.removeEventListener("interaction-updated", onInteractionUpdated);
+    window.addEventListener("task-updated", onTaskUpdated);
+    return () => {
+      window.removeEventListener("interaction-updated", onInteractionUpdated);
+      window.removeEventListener("task-updated", onTaskUpdated);
+    };
   }, []);
 
   return data;

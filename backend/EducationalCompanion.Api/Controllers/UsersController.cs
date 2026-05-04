@@ -170,6 +170,29 @@ public class UsersController : ControllerBase
         return Ok(task);
     }
 
+    [HttpPut("{id}/tasks/{taskId:guid}")]
+    public async Task<ActionResult<StudyTaskResponse>> UpdateTask(
+        string id,
+        Guid taskId,
+        [FromBody] UpdateStudyTaskRequest request,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        var task = await _studyTaskService.UpdateAsync(id, taskId, request, ct);
+        return Ok(task);
+    }
+
+    [HttpDelete("{id}/tasks/{taskId:guid}")]
+    public async Task<IActionResult> DeleteTask(
+        string id,
+        Guid taskId,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        await _studyTaskService.DeleteAsync(id, taskId, ct);
+        return NoContent();
+    }
+
     private void EnsureCallerMatchesUserId(string userId)
     {
         if (User?.Identity?.IsAuthenticated != true)

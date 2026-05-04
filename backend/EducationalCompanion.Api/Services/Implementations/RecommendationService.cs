@@ -12,6 +12,8 @@ public class RecommendationService : IRecommendationService
     private const double MaxScore = 1.0;
     private const int MaxAlgorithmUsedLength = 50;
     private const int MaxExplanationLength = 1000;
+    private const double AutoTaskMinScore = 0.65;
+    private const int AutoTaskFallbackCount = 2;
 
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
@@ -68,9 +70,24 @@ public class RecommendationService : IRecommendationService
             await _recommendationRepo.AddAsync(entity, ct);
 
         await _recommendationRepo.SaveChangesAsync(ct);
+        var taskCandidateIds = entities
+            .Where(e => e.Score >= AutoTaskMinScore)
+            .OrderByDescending(e => e.Score)
+            .Select(e => e.LearningResourceId)
+            .ToList();
+
+        if (taskCandidateIds.Count == 0)
+        {
+            taskCandidateIds = entities
+                .OrderByDescending(e => e.Score)
+                .Take(AutoTaskFallbackCount)
+                .Select(e => e.LearningResourceId)
+                .ToList();
+        }
+
         await _studyTaskService.EnsurePendingTasksForRecommendationsAsync(
             userId,
-            entities.Select(e => e.LearningResourceId).ToList(),
+            taskCandidateIds,
             ct);
 
         return new CreatedRecommendationsResponse(userId, entities.Count, replaced);

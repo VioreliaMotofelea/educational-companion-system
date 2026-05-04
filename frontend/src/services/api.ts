@@ -191,6 +191,40 @@ export const updateUserTaskStatus = (
     body: JSON.stringify({ status }),
   });
 
+export type CreateStudyTaskRequest = {
+  learningResourceId?: string | null;
+  title: string;
+  notes?: string | null;
+  deadlineUtc: string;
+  estimatedMinutes: number;
+  priority: number;
+};
+
+export type UpdateStudyTaskRequest = CreateStudyTaskRequest;
+
+export const createUserTask = (userId: string, payload: CreateStudyTaskRequest): Promise<StudyTask> =>
+  fetcher<StudyTask>(`${API_BASE}/users/${userId}/tasks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+export const updateUserTask = (userId: string, taskId: string, payload: UpdateStudyTaskRequest): Promise<StudyTask> =>
+  fetcher<StudyTask>(`${API_BASE}/users/${userId}/tasks/${taskId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+export const deleteUserTask = (userId: string, taskId: string): Promise<void> =>
+  fetcher<void>(`${API_BASE}/users/${userId}/tasks/${taskId}`, {
+    method: "DELETE",
+  });
+
 export type UpdateUserPreferencesRequest = {
   preferredDifficulty?: number | null;
   preferredContentTypesCsv?: string | null;
