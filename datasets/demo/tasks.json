@@ -1,0 +1,42 @@
+[
+  {
+    "userId": "demo-alex",
+    "learningResourceId": "00000000-0000-4000-8000-000000000003",
+    "title": "Study: SQL Filtering, Sorting, and Grouping",
+    "notes": "Auto-generated from recommendation list.",
+    "deadlineUtc": "2026-05-10T18:00:00Z",
+    "estimatedMinutes": 30,
+    "priority": 3,
+    "status": "Pending"
+  },
+  {
+    "userId": "demo-alex",
+    "learningResourceId": null,
+    "title": "Revise Python exercises before lab",
+    "notes": "Manual task added by learner.",
+    "deadlineUtc": "2026-05-09T16:00:00Z",
+    "estimatedMinutes": 45,
+    "priority": 4,
+    "status": "Completed"
+  },
+  {
+    "userId": "demo-bianca",
+    "learningResourceId": "00000000-0000-4000-8000-000000000004",
+    "title": "Study: Machine Learning Pipeline Overview",
+    "notes": "Focus on evaluation phase and validation split.",
+    "deadlineUtc": "2026-05-11T12:00:00Z",
+    "estimatedMinutes": 35,
+    "priority": 3,
+    "status": "Pending"
+  },
+  {
+    "userId": "demo-catalin",
+    "learningResourceId": "00000000-0000-4000-8000-00000000000c",
+    "title": "Study: Active Recall and Spaced Repetition",
+    "notes": "Convert notes into Q/A flashcards.",
+    "deadlineUtc": "2026-05-07T07:00:00Z",
+    "estimatedMinutes": 20,
+    "priority": 2,
+    "status": "Overdue"
+  }
+]

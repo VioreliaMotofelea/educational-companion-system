@@ -1,0 +1,38 @@
+[
+  {
+    "userId": "demo-alex",
+    "email": "alex.demo@example.com",
+    "dailyAvailableMinutes": 75,
+    "level": 2,
+    "xp": 120,
+    "preferences": {
+      "preferredDifficulty": 2,
+      "preferredContentTypesCsv": "Article,Video",
+      "preferredTopicsCsv": "Programming Fundamentals,Web Development,Databases"
+    }
+  },
+  {
+    "userId": "demo-bianca",
+    "email": "bianca.demo@example.com",
+    "dailyAvailableMinutes": 60,
+    "level": 1,
+    "xp": 40,
+    "preferences": {
+      "preferredDifficulty": 3,
+      "preferredContentTypesCsv": "Video,Quiz",
+      "preferredTopicsCsv": "Artificial Intelligence,Data Analysis"
+    }
+  },
+  {
+    "userId": "demo-catalin",
+    "email": "catalin.demo@example.com",
+    "dailyAvailableMinutes": 45,
+    "level": 1,
+    "xp": 15,
+    "preferences": {
+      "preferredDifficulty": 2,
+      "preferredContentTypesCsv": "Article",
+      "preferredTopicsCsv": "Study Skills / Productivity,Programming Fundamentals"
+    }
+  }
+]
