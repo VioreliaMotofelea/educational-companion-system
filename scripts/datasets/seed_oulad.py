@@ -54,6 +54,11 @@ def sql_nullable_int(value: int | None) -> str:
     return str(int(value))
 
 
+def sql_user_profile_id_subquery(user_id_quoted: str) -> str:
+    """Optional FK UserProfileId; NULL if no UserProfiles row for that Identity user id."""
+    return f'(SELECT "Id" FROM "UserProfiles" WHERE "UserId" = {user_id_quoted} LIMIT 1)'
+
+
 def seed_via_api(
     backend_url: str,
     users: List[dict],
@@ -170,6 +175,7 @@ def build_sql(users: List[dict], resources: List[dict], interactions: List[dict]
     lines.append("            ('UserInteractions', 'InteractionType'),")
     lines.append("            ('UserInteractions', 'Rating'),")
     lines.append("            ('UserInteractions', 'TimeSpentMinutes'),")
+    lines.append("            ('UserInteractions', 'UserProfileId'),")
     lines.append("            ('UserInteractions', 'CreatedAtUtc'),")
     lines.append("            ('UserInteractions', 'UpdatedAtUtc')")
     lines.append("    )")
@@ -234,17 +240,22 @@ def build_sql(users: List[dict], resources: List[dict], interactions: List[dict]
         interaction_type = INTERACTION_TYPE_TO_INT[str(interaction["interactionType"])]
         created_at = interaction.get("createdAtUtc")
         created_at_sql = "NOW()" if not created_at else f"{sql_quote(str(created_at))}::timestamptz"
+        uid_q = sql_quote(str(interaction["userId"]))
+        profile_sql = sql_user_profile_id_subquery(uid_q)
 
         lines.append(
             "INSERT INTO \"UserInteractions\" "
-            "(\"Id\", \"UserId\", \"LearningResourceId\", \"InteractionType\", \"Rating\", \"TimeSpentMinutes\", \"CreatedAtUtc\") VALUES "
-            f"({sql_quote(interaction_id)}::uuid, {sql_quote(str(interaction['userId']))}, "
+            "(\"Id\", \"UserId\", \"LearningResourceId\", \"InteractionType\", \"Rating\", \"TimeSpentMinutes\", "
+            "\"UserProfileId\", \"CreatedAtUtc\") VALUES "
+            f"({sql_quote(interaction_id)}::uuid, {uid_q}, "
             f"{sql_quote(str(interaction['learningResourceId']))}::uuid, {interaction_type}, "
-            f"{sql_nullable_int(interaction.get('rating'))}, {sql_nullable_int(interaction.get('timeSpentMinutes'))}, {created_at_sql}) "
+            f"{sql_nullable_int(interaction.get('rating'))}, {sql_nullable_int(interaction.get('timeSpentMinutes'))}, "
+            f"{profile_sql}, {created_at_sql}) "
             "ON CONFLICT (\"Id\") DO UPDATE SET "
             "\"InteractionType\" = EXCLUDED.\"InteractionType\", "
             "\"Rating\" = EXCLUDED.\"Rating\", "
             "\"TimeSpentMinutes\" = EXCLUDED.\"TimeSpentMinutes\", "
+            "\"UserProfileId\" = EXCLUDED.\"UserProfileId\", "
             "\"UpdatedAtUtc\" = NOW();"
         )
 
@@ -283,6 +294,7 @@ def verify_db_schema(db_url: str, schema: str = "public") -> None:
         ("UserInteractions", "InteractionType"),
         ("UserInteractions", "Rating"),
         ("UserInteractions", "TimeSpentMinutes"),
+        ("UserInteractions", "UserProfileId"),
         ("UserInteractions", "CreatedAtUtc"),
         ("UserInteractions", "UpdatedAtUtc"),
     ]
