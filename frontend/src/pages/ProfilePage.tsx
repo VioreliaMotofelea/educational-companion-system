@@ -106,7 +106,7 @@ export default function ProfilePage() {
 
       <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 16, alignItems: "start" }}>
         <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Preferințe</h3>
+          <h3 style={{ marginTop: 0 }}>Preferences</h3>
           <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               Preferred difficulty (1-5){" "}
@@ -167,7 +167,7 @@ export default function ProfilePage() {
         </section>
 
         <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Nivel dificultate</h3>
+          <h3 style={{ marginTop: 0 }}>Difficulty level</h3>
           {mastery.loading ? (
             <p style={{ marginTop: 12, color: "var(--muted)" }}>Loading mastery...</p>
           ) : mastery.error ? (
@@ -191,7 +191,7 @@ export default function ProfilePage() {
           )}
 
           <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-            <h3 style={{ marginTop: 0, fontSize: 16 }}>Stats & comportament</h3>
+            <h3 style={{ marginTop: 0, fontSize: 16 }}>Stats & behavior</h3>
             {analytics ? (
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>Current level: <b style={{ color: "var(--color-progress-600)" }}>{analytics.kpis.currentLevel}</b></div>
