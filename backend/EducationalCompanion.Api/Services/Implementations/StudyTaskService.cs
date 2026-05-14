@@ -3,9 +3,11 @@ using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Domain.Entities;
 using DomainTaskStatus = EducationalCompanion.Domain.Enums.TaskStatus;
 using EducationalCompanion.Domain.Exceptions;
+using EducationalCompanion.Api.Options;
 using EducationalCompanion.Infrastructure.Persistence;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace EducationalCompanion.Api.Services.Implementations;
 
@@ -14,15 +16,18 @@ public class StudyTaskService : IStudyTaskService
     private readonly ApplicationDbContext _dbContext;
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
+    private readonly IOptions<CalendarOptions> _calendarOptions;
 
     public StudyTaskService(
         ApplicationDbContext dbContext,
         IUserProfileRepository userProfileRepo,
-        ILearningResourceRepository learningResourceRepo)
+        ILearningResourceRepository learningResourceRepo,
+        IOptions<CalendarOptions> calendarOptions)
     {
         _dbContext = dbContext;
         _userProfileRepo = userProfileRepo;
         _learningResourceRepo = learningResourceRepo;
+        _calendarOptions = calendarOptions;
     }
 
     public async Task<IReadOnlyList<StudyTaskResponse>> GetByUserAsync(string userId, CancellationToken ct = default)
@@ -176,7 +181,8 @@ public class StudyTaskService : IStudyTaskService
         var profile = await _userProfileRepo.GetByUserIdAsync(userId, ct);
         var dailyMinutes = profile?.DailyAvailableMinutes ?? 60;
         var now = DateTime.UtcNow;
-        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(now, dailyMinutes, estimates);
+        var deadlineZone = ResolveDeadlineTimeZone();
+        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(now, dailyMinutes, estimates, deadlineZone);
 
         for (var i = 0; i < ordered.Count; i++)
         {
@@ -224,6 +230,25 @@ public class StudyTaskService : IStudyTaskService
 
         _dbContext.StudyTasks.Remove(task);
         await _dbContext.SaveChangesAsync(ct);
+    }
+
+    private TimeZoneInfo? ResolveDeadlineTimeZone()
+    {
+        var id = _calendarOptions.Value.DeadlineTimeZoneId;
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(id.Trim());
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return null;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return null;
+        }
     }
 
     private async Task EnsureUserExistsAsync(string userId, CancellationToken ct)

@@ -83,6 +83,7 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 builder.Services.Configure<AiServiceOptions>(builder.Configuration.GetSection(AiServiceOptions.SectionName));
+builder.Services.Configure<CalendarOptions>(builder.Configuration.GetSection(CalendarOptions.SectionName));
 builder.Services.AddHttpClient();
 
 // Repositories
