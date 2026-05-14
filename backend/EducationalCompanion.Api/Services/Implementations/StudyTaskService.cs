@@ -169,22 +169,29 @@ public class StudyTaskService : IStudyTaskService
             .Where(r => toCreate.Contains(r.Id))
             .ToListAsync(ct);
 
+        var resourceById = resources.ToDictionary(r => r.Id);
+        var ordered = toCreate.Select(id => resourceById[id]).ToList();
+        var estimates = ordered.Select(r => Math.Max(5, r.EstimatedDurationMinutes)).ToList();
+
+        var profile = await _userProfileRepo.GetByUserIdAsync(userId, ct);
+        var dailyMinutes = profile?.DailyAvailableMinutes ?? 60;
         var now = DateTime.UtcNow;
-        var index = 0;
-        foreach (var resource in resources)
+        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(now, dailyMinutes, estimates);
+
+        for (var i = 0; i < ordered.Count; i++)
         {
+            var resource = ordered[i];
             await _dbContext.StudyTasks.AddAsync(new StudyTask
             {
                 UserId = userId,
                 LearningResourceId = resource.Id,
                 Title = $"Study: {resource.Title}",
                 Notes = "Auto-created from current recommendations.",
-                EstimatedMinutes = Math.Max(5, resource.EstimatedDurationMinutes),
+                EstimatedMinutes = estimates[i],
                 Priority = 3,
-                DeadlineUtc = now.AddDays(1 + index),
+                DeadlineUtc = deadlines[i],
                 Status = DomainTaskStatus.Pending
             }, ct);
-            index++;
         }
 
         await _dbContext.SaveChangesAsync(ct);
