@@ -125,7 +125,7 @@ export default function ProfilePage() {
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              Preferred content types (CSV: Article,Video,Quiz)
+              Content you prefer (comma-separated: Article, Video, Quiz)
               <input
                 value={preferredContentTypesCsv}
                 onChange={(e) => setPreferredContentTypesCsv(e.target.value)}
@@ -135,7 +135,7 @@ export default function ProfilePage() {
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              Preferred topics (CSV)
+              Topics you enjoy (comma-separated)
               <input
                 value={preferredTopicsCsv}
                 onChange={(e) => setPreferredTopicsCsv(e.target.value)}

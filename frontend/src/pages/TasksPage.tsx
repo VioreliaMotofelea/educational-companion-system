@@ -1,12 +1,22 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { CALENDAR_DEADLINE_TIMEZONE } from "../constants/calendarTime";
 import AppLayout from "../components/layout/AppLayout";
+import { formatDeadlineDateTime } from "../utils/calendarMonth";
+import { humanizeResourceTitle } from "../utils/recommendationUtils";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAnalytics } from "../hooks/useAnalytics";
 import TodayPlan from "../components/dashboard/TodayPlan";
 import { useTasks } from "../hooks/useTasks";
+import { UI_LOCALE } from "../constants/uiLocale";
 import type { StudyTask } from "../types";
 
+function taskDisplayTitle(task: StudyTask): string {
+  return humanizeResourceTitle(task.learningResourceTitle ?? task.title);
+}
+
 export default function TasksPage() {
+  const location = useLocation();
   const { userId } = useCurrentUser();
   const analytics = useAnalytics(userId);
   const { tasks, loading: tasksLoading, error: tasksError, setTaskStatus, createTask, editTask, removeTask } = useTasks(userId);
@@ -29,6 +39,15 @@ export default function TasksPage() {
     if (byStatus !== 0) return byStatus;
     return new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime();
   }), [tasks]);
+
+  useLayoutEffect(() => {
+    if (location.pathname !== "/tasks") return;
+    const id = location.hash.replace(/^#/, "");
+    if (id !== "schedule" && id !== "tasks-list") return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.pathname, location.hash]);
 
   const resetDraft = () =>
     setDraft({
@@ -124,6 +143,20 @@ export default function TasksPage() {
         <p style={{ margin: 0, color: "var(--muted)" }}>AI-assisted view (based on analytics)</p>
       </div>
 
+      <p style={{ margin: "8px 0 0 0", color: "var(--muted)", fontSize: 14 }}>
+        <Link to="/calendar" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
+          Open month calendar
+        </Link>{" "}
+        for deadlines by day · jump to{" "}
+        <a href="#schedule" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
+          suggested schedule
+        </a>{" "}
+        or{" "}
+        <a href="#tasks-list" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
+          task list
+        </a>
+      </p>
+
       {!analytics ? (
         <div style={{ marginTop: 12, border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
           <p style={{ margin: 0, color: "var(--muted)" }}>Loading tasks...</p>
@@ -149,11 +182,11 @@ export default function TasksPage() {
         Calendar/timeline and “AI suggested schedule” are generated client-side for now (backend schedule APIs are planned).
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div id="schedule" style={{ scrollMarginTop: 72 }}>
         <TodayPlan title="AI suggested schedule" />
       </div>
 
-      <section style={{ marginTop: 16, border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
+      <section id="tasks-list" style={{ marginTop: 16, scrollMarginTop: 72, border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
           <h3 style={{ margin: 0 }}>Your study tasks</h3>
           <button
@@ -210,9 +243,11 @@ export default function TasksPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
                   <div>
-                    <div style={{ fontWeight: 800 }}>{task.learningResourceTitle ?? task.title}</div>
+                    <div style={{ fontWeight: 800 }}>{taskDisplayTitle(task)}</div>
                     <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                      Status: <b>{task.status}</b> • Due: {new Date(task.deadlineUtc).toLocaleString()} • {task.estimatedMinutes} min
+                      Status: <b>{task.status}</b> • Due:{" "}
+                      {formatDeadlineDateTime(task.deadlineUtc, UI_LOCALE, CALENDAR_DEADLINE_TIMEZONE)} •{" "}
+                      {task.estimatedMinutes} min
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -281,7 +316,7 @@ export default function TasksPage() {
                         setFormError(null);
                         setPendingDeleteTask({
                           id: task.id,
-                          title: task.learningResourceTitle ?? task.title,
+                          title: taskDisplayTitle(task),
                         });
                       }}
                       style={{
