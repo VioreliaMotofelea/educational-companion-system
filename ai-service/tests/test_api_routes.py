@@ -35,13 +35,14 @@ def test_generate_recommendations_calls_dependencies(monkeypatch):
     def fake_get_user_mastery(user_id: str):
         return {"suggestedDifficulty": 2}
 
-    def fake_generate_hybrid(user, interactions, all_users_interactions, resources, mastery, top_k=None):
+    def fake_generate_hybrid(user, interactions, all_users_interactions, resources, mastery, top_k=None, variant="full"):
         assert mastery["suggestedDifficulty"] == 2
+        assert variant == "full"
         return [
             RecommendationItem(
                 learningResourceId="r2",
                 score=0.9,
-                algorithmUsed="Hybrid",
+                algorithmUsed="Hybrid-full",
                 explanation="ok",
             )
         ]
@@ -53,10 +54,11 @@ def test_generate_recommendations_calls_dependencies(monkeypatch):
             replacedExisting=True,
         )
 
-    def fake_append_recommendation_session(user_id: str, recommended_items):
+    def fake_append_recommendation_session(user_id: str, recommended_items, variant=None):
         captured["append_called"] = True
         captured["append_items"] = recommended_items
-        return RecommendationLog(user_id=user_id, recommended_items=recommended_items)
+        captured["variant"] = variant
+        return RecommendationLog(user_id=user_id, recommended_items=recommended_items, variant=variant)
 
     monkeypatch.setattr(routes_mod, "get_user", fake_get_user)
     monkeypatch.setattr(routes_mod, "get_user_interactions", fake_get_user_interactions)
@@ -67,12 +69,14 @@ def test_generate_recommendations_calls_dependencies(monkeypatch):
     monkeypatch.setattr(routes_mod, "push_recommendations", fake_push_recommendations)
     monkeypatch.setattr(routes_mod, "append_recommendation_session", fake_append_recommendation_session)
 
-    res = routes_mod.generate_recommendations("user-2")
+    res = routes_mod.generate_recommendations("user-2", variant="full")
     assert res.userId == "user-2"
     assert res.generated == 1
+    assert res.variant == "full"
     assert res.backendResponse.createdCount == 1
     assert captured["append_called"] is True
     assert captured["append_items"] == ["r2"]
+    assert captured["variant"] == "full"
 
 
 def test_generate_recommendations_falls_back_when_mastery_missing(monkeypatch):
@@ -91,13 +95,14 @@ def test_generate_recommendations_falls_back_when_mastery_missing(monkeypatch):
     def fake_get_user_mastery(user_id: str):
         raise BackendError(404, "No mastery")
 
-    def fake_generate_hybrid(user, interactions, all_users_interactions, resources, mastery, top_k=None):
+    def fake_generate_hybrid(user, interactions, all_users_interactions, resources, mastery, top_k=None, variant="full"):
         assert mastery is None
+        assert variant == "full"
         return [
             RecommendationItem(
                 learningResourceId="r2",
                 score=0.5,
-                algorithmUsed="Hybrid",
+                algorithmUsed="Hybrid-full",
                 explanation="ok",
             )
         ]
@@ -109,8 +114,8 @@ def test_generate_recommendations_falls_back_when_mastery_missing(monkeypatch):
             replacedExisting=True,
         )
 
-    def fake_append_recommendation_session(user_id: str, recommended_items):
-        return RecommendationLog(user_id=user_id, recommended_items=recommended_items)
+    def fake_append_recommendation_session(user_id: str, recommended_items, variant=None):
+        return RecommendationLog(user_id=user_id, recommended_items=recommended_items, variant=variant)
 
     monkeypatch.setattr(routes_mod, "get_user", fake_get_user)
     monkeypatch.setattr(routes_mod, "get_user_interactions", fake_get_user_interactions)
@@ -121,8 +126,64 @@ def test_generate_recommendations_falls_back_when_mastery_missing(monkeypatch):
     monkeypatch.setattr(routes_mod, "push_recommendations", fake_push_recommendations)
     monkeypatch.setattr(routes_mod, "append_recommendation_session", fake_append_recommendation_session)
 
-    res = routes_mod.generate_recommendations("user-2")
+    res = routes_mod.generate_recommendations("user-2", variant="full")
     assert res.userId == "user-2"
+    assert res.variant == "full"
+
+
+def test_generate_recommendations_passes_no_difficulty_variant(monkeypatch):
+    captured = {}
+
+    def fake_get_user(user_id: str):
+        return {"userId": user_id}
+
+    def fake_get_user_interactions(user_id: str):
+        return []
+
+    def fake_get_all_interactions():
+        return []
+
+    def fake_get_resources():
+        return [{"id": "r1", "difficulty": 1}]
+
+    def fake_get_user_mastery(user_id: str):
+        return {"suggestedDifficulty": 2}
+
+    def fake_generate_hybrid(user, interactions, all_users_interactions, resources, mastery, top_k=None, variant="full"):
+        captured["variant"] = variant
+        return [
+            RecommendationItem(
+                learningResourceId="r1",
+                score=0.4,
+                algorithmUsed="Hybrid-no_difficulty",
+                explanation="ok",
+            )
+        ]
+
+    def fake_push_recommendations(user_id: str, recommendations):
+        return BackendRecommendationsResponse(
+            userId=user_id,
+            createdCount=len(recommendations),
+            replacedExisting=True,
+        )
+
+    def fake_append_recommendation_session(user_id: str, recommended_items, variant=None):
+        captured["append_variant"] = variant
+        return RecommendationLog(user_id=user_id, recommended_items=recommended_items, variant=variant)
+
+    monkeypatch.setattr(routes_mod, "get_user", fake_get_user)
+    monkeypatch.setattr(routes_mod, "get_user_interactions", fake_get_user_interactions)
+    monkeypatch.setattr(routes_mod, "get_all_interactions", fake_get_all_interactions)
+    monkeypatch.setattr(routes_mod, "get_resources", fake_get_resources)
+    monkeypatch.setattr(routes_mod, "get_user_mastery", fake_get_user_mastery)
+    monkeypatch.setattr(routes_mod, "generate_hybrid", fake_generate_hybrid)
+    monkeypatch.setattr(routes_mod, "push_recommendations", fake_push_recommendations)
+    monkeypatch.setattr(routes_mod, "append_recommendation_session", fake_append_recommendation_session)
+
+    res = routes_mod.generate_recommendations("user-x", variant="no_difficulty")
+    assert res.variant == "no_difficulty"
+    assert captured["variant"] == "no_difficulty"
+    assert captured["append_variant"] == "no_difficulty"
 
 
 def test_evaluation_click_returns_404_when_no_session(monkeypatch):

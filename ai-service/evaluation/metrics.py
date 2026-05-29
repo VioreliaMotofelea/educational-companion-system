@@ -1,10 +1,6 @@
 import math
 
 
-# ----------------------------
-# BASIC METRICS
-# ----------------------------
-
 def precision_at_k(recommended, relevant, k):
     recommended_k = recommended[:k]
     relevant_set = set(relevant)
@@ -27,10 +23,7 @@ def recall_at_k(recommended, relevant, k):
     return hits / len(relevant_set)
 
 
-# ----------------------------
 # NDCG (MULTI-LEVEL RELEVANCE)
-# ----------------------------
-
 def dcg_at_k(recommended, relevance_scores, k):
     """
     relevance_scores: dict {item_id: relevance_score}
@@ -65,10 +58,7 @@ def ndcg_at_k(recommended, relevance_scores, k):
     return actual_dcg / ideal_dcg
 
 
-# ----------------------------
 # BEHAVIORAL METRICS
-# ----------------------------
-
 def ctr(logs):
     clicks = sum(len(log.get("clicked_items", [])) for log in logs)
     total = sum(len(log.get("recommended_items", [])) for log in logs)
@@ -83,10 +73,7 @@ def completion_rate(logs):
     return completed / recommended if recommended else 0
 
 
-# ----------------------------
 # COVERAGE
-# ----------------------------
-
 def coverage(logs, total_items):
     recommended_items = set()
 
@@ -96,10 +83,7 @@ def coverage(logs, total_items):
     return len(recommended_items) / total_items if total_items else 0
 
 
-# ----------------------------
 # DIVERSITY / NOVELTY
-# ----------------------------
-
 def _pair_dissimilarity(resource_a, resource_b):
     topic_a = resource_a.get("topic")
     topic_b = resource_b.get("topic")

@@ -10,6 +10,10 @@ class RecommendationLog(BaseModel):
     recommended_items: List[str]
     clicked_items: List[str] = Field(default_factory=list)
     completed_items: List[str] = Field(default_factory=list)
+    variant: str | None = Field(
+        default=None,
+        description="Hybrid variant from POST /generate (e.g. full, no_difficulty); None for legacy logs.",
+    )
 
 
 class InteractionEventRequest(BaseModel):

@@ -1,6 +1,7 @@
 import logging
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from api.exceptions import BackendError
 from clients.backend_client import (
@@ -30,16 +31,22 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/generate/{user_id}", response_model=RecommendationGenerationResponse)
-def generate_recommendations(user_id: str):
-    """
-    Generate hybrid recommendations for a user and persist them to the backend.
+HybridVariant = Literal["full", "no_difficulty"]
 
-    Fetches: user profile, user interactions, all users' interactions (for collaborative),
-    resources, and EDM mastery (for difficulty adaptation). Combines TF-IDF content-based,
-    KNN collaborative, and difficulty match into final scores and writes to backend.
-    """
-    logger.info("Generating recommendations for user_id=%s", user_id)
+
+@router.post("/generate/{user_id}", response_model=RecommendationGenerationResponse)
+def generate_recommendations(
+    user_id: str,
+    variant: Annotated[
+        HybridVariant,
+        Query(
+            description='Hybrid variant: "full" (content+collab+difficulty) or '
+            '"no_difficulty" (content+collab only, renormalized weights).',
+        ),
+    ] = "full",
+):
+
+    logger.info("Generating recommendations for user_id=%s variant=%s", user_id, variant)
 
     user = get_user(user_id)
     interactions = get_user_interactions(user_id)
@@ -58,22 +65,26 @@ def generate_recommendations(user_id: str):
         all_users_interactions,
         resources,
         mastery,
+        variant=variant,
     )
 
     result = push_recommendations(user_id, recommendations)
     append_recommendation_session(
         user_id,
         [r.learningResourceId for r in recommendations],
+        variant=variant,
     )
 
     logger.info(
-        "Generated %d recommendations for user_id=%s",
+        "Generated %d recommendations for user_id=%s variant=%s",
         len(recommendations),
         user_id,
+        variant,
     )
     return RecommendationGenerationResponse(
         userId=user_id,
         generated=len(recommendations),
+        variant=variant,
         backendResponse=result,
     )
 

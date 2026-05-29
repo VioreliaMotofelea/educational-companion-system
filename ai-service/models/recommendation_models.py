@@ -54,6 +54,10 @@ class RecommendationGenerationResponse(BaseModel):
 
     userId: str
     generated: int = Field(..., description="Number of recommendations generated")
+    variant: str = Field(
+        default="full",
+        description="Hybrid variant used (query param variant); echoed for evaluation clients.",
+    )
     backendResponse: BackendRecommendationsResponse
 
     model_config = {
@@ -62,6 +66,7 @@ class RecommendationGenerationResponse(BaseModel):
                 {
                     "userId": "user-1",
                     "generated": 10,
+                    "variant": "full",
                     "backendResponse": {
                         "userId": "user-1",
                         "createdCount": 10,

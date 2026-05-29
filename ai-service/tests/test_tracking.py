@@ -33,9 +33,10 @@ def isolated_default_log_file():
 
 
 def test_append_and_register_click_completion(isolated_default_log_file):
-    log = tracking.append_recommendation_session("user-1", ["a", "b"])
+    log = tracking.append_recommendation_session("user-1", ["a", "b"], variant="full")
     assert log.user_id == "user-1"
     assert log.recommended_items == ["a", "b"]
+    assert log.variant == "full"
     assert log.clicked_items == []
     assert log.completed_items == []
 
@@ -46,6 +47,11 @@ def test_append_and_register_click_completion(isolated_default_log_file):
     assert len(logs) == 1
     assert logs[0].clicked_items == ["a"]
     assert logs[0].completed_items == ["a"]
+
+
+def test_append_session_without_variant_records_none(isolated_default_log_file):
+    log = tracking.append_recommendation_session("user-9", ["z"])
+    assert log.variant is None
 
 
 def test_events_attach_to_latest_session_with_item(isolated_default_log_file):
