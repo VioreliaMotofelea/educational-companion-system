@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useRecommendations } from "../../hooks/useRecommendations";
 import { useUser } from "../../hooks/useUser";
+import { UI_LOCALE } from "../../constants/uiLocale";
+import { humanizeResourceTitle, humanizeTopicLine } from "../../utils/recommendationUtils";
 
 type Props = {
   title?: string;
@@ -12,7 +14,7 @@ function addMinutes(base: Date, minutes: number) {
 }
 
 function formatTime(d: Date) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(UI_LOCALE, { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function TodayPlan({ title = "Today's plan" }: Props) {
@@ -21,6 +23,8 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
   const {
     data: recommendations,
     loading: recLoading,
+    error: recError,
+    refetch,
   } = useRecommendations(userId, 10);
 
   const dailyMinutes = user?.dailyAvailableMinutes ?? 0;
@@ -50,12 +54,12 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
       if (duration > remaining) continue; // keep blocks whole for clean UX
 
       blocks.push({
-        title: rec.resource.title,
+        title: humanizeResourceTitle(rec.resource.title),
         reason: rec.explanation,
         startMinutes: cursor,
         endMinutes: cursor + duration,
         durationMinutes: duration,
-        topic: rec.resource.topic,
+        topic: humanizeTopicLine(rec.resource.topic),
         difficulty: rec.resource.difficulty,
         resourceId: rec.resource.id,
       });
@@ -76,8 +80,33 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
   if (userLoading || recLoading) {
     return (
       <div style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-        <p style={{ margin: 0, color: "var(--muted)" }}>Generating AI suggested schedule...</p>
+        <p style={{ margin: 0, color: "var(--muted)" }}>Preparing your suggested schedule…</p>
       </div>
+    );
+  }
+
+  if (recError) {
+    return (
+      <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
+        <h3 style={{ marginTop: 0 }}>{title}</h3>
+        <p style={{ margin: "8px 0 0 0", color: "rgba(239, 68, 68, 0.95)" }}>{recError}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          style={{
+            marginTop: 12,
+            background: "var(--color-ai-600)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "var(--radius-md)",
+            padding: "8px 14px",
+            cursor: "pointer",
+            fontWeight: 700,
+          }}
+        >
+          Try again
+        </button>
+      </section>
     );
   }
 
@@ -85,14 +114,20 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
     <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
 
-      <p style={{ margin: "8px 0 0 0", color: "var(--muted)" }}>
-        Daily available minutes: <b style={{ color: "var(--color-ai-600)" }}>{dailyMinutes}</b>
+      <p style={{ margin: "8px 0 0 0", color: "var(--muted)", lineHeight: 1.5 }}>
+        Based on your <b style={{ color: "var(--color-ai-600)" }}>{dailyMinutes}</b> minutes available today and your current top picks.
       </p>
 
       {dailyMinutes <= 0 ? (
-        <p style={{ marginTop: 12, color: "var(--muted)" }}>Set your daily time in Profile to see a schedule.</p>
+        <p style={{ marginTop: 12, color: "var(--muted)" }}>
+          Add how many minutes you can study each day in <b>Profile</b> — we will shape the plan around that.
+        </p>
       ) : scheduleBlocks.length === 0 ? (
-        <p style={{ marginTop: 12, color: "var(--muted)" }}>No schedule fits your available time yet.</p>
+        <p style={{ marginTop: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+          {recommendations.length === 0
+            ? "No recommendations loaded yet, or each item is longer than your available window. Try shorter sessions or refresh your picks on the Recommendations page."
+            : "No single recommendation fits fully inside your remaining minutes today. Try freeing more time or completing shorter items first."}
+        </p>
       ) : (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           {scheduleBlocks.map((b, idx) => {
@@ -111,28 +146,30 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div>
-                    <div style={{ fontWeight: 800, color: "var(--text)" }}>{idx + 1}. {b.title}</div>
+                    <div style={{ fontWeight: 800, color: "var(--text)" }}>
+                      {idx + 1}. {b.title}
+                    </div>
                     <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                      Topic: <b>{b.topic}</b> • Difficulty: <b style={{ color: "var(--color-ai-600)" }}>{b.difficulty}</b>
+                      Topic: <b>{b.topic}</b> • Level: <b style={{ color: "var(--color-ai-600)" }}>{b.difficulty}/5</b>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 800 }}>{formatTime(start)} - {formatTime(end)}</div>
+                    <div style={{ fontWeight: 800 }}>
+                      {formatTime(start)} – {formatTime(end)}
+                    </div>
                     <div style={{ color: "var(--muted)", marginTop: 4 }}>{b.durationMinutes} min</div>
                   </div>
                 </div>
 
-                <p style={{ margin: "10px 0 0 0", color: "var(--muted)" }}>
-                  💡 {b.reason}
-                </p>
+                <p style={{ margin: "10px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.45 }}>{b.reason}</p>
               </div>
             );
           })}
         </div>
       )}
 
-      <div style={{ marginTop: 14, color: "var(--muted)", fontSize: 12 }}>
-        AI suggested schedule is currently generated from your top recommendations and your daily available minutes.
+      <div style={{ marginTop: 14, color: "var(--muted)", fontSize: 12, lineHeight: 1.45 }}>
+        This schedule is a gentle suggestion built from your recommendations and daily time — adjust freely to match how you really study.
       </div>
     </section>
   );
