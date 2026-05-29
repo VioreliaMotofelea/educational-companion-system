@@ -1,5 +1,11 @@
 import { createInteraction } from "../../services/api";
 import { useEffect, useState } from "react";
+import {
+  humanizeResourceTitle,
+  humanizeTopicLine,
+  matchStrengthForLearner,
+  scoreBandLabel,
+} from "../../utils/recommendationUtils";
 
 type Props = {
   title: string;
@@ -92,16 +98,35 @@ export default function RecommendationCard({
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const reasonMatch = reason.match(
+  const fullReasonMatch = reason.match(
     /Content match ([0-9.]+), similar users ([0-9.]+), difficulty fit ([0-9.]+) \(suggested level ([0-9]+)\)\.?/
   );
-  const friendlyReason = reasonMatch
-    ? `Recommended because it matches resources you completed and fits your suggested level ${reasonMatch[4]}.`
-    : reason;
+  const noDifficultyReasonMatch = reason.match(
+    /Content match ([0-9.]+), similar users ([0-9.]+)\.\s*Difficulty is not used/i
+  );
+  const reasonMatch = fullReasonMatch ?? noDifficultyReasonMatch;
+  const friendlyReason = fullReasonMatch
+    ? `Recommended because it lines up with topics you have engaged with and fits your suggested level ${fullReasonMatch[4]}.`
+    : noDifficultyReasonMatch
+      ? "Recommended because it lines up with topics you have engaged with and what similar learners found useful."
+      : reason;
+  const contentScore = reasonMatch ? Number(reasonMatch[1]) : null;
+  const collabScore = reasonMatch ? Number(reasonMatch[2]) : null;
+  const difficultyScore = fullReasonMatch ? Number(fullReasonMatch[3]) : null;
   const technicalReason = reasonMatch
-    ? `Content ${reasonMatch[1]} · Similar users ${reasonMatch[2]} · Difficulty ${reasonMatch[3]}`
+    ? fullReasonMatch
+      ? `${scoreBandLabel(contentScore ?? 0, "content")} · ${scoreBandLabel(collabScore ?? 0, "collab")} · ${scoreBandLabel(difficultyScore ?? 0, "difficulty")}`
+      : `${scoreBandLabel(contentScore ?? 0, "content")} · ${scoreBandLabel(collabScore ?? 0, "collab")}`
     : null;
-  const subtitle = `${topic ?? "General"} · OULAD #${resourceId.slice(0, 8)}${contentType ? ` · ${contentType}` : ""}`;
+  const modelBreakdown = reasonMatch
+    ? fullReasonMatch
+      ? `Raw model values: content ${contentScore?.toFixed(2)}, peers ${collabScore?.toFixed(2)}, difficulty ${difficultyScore?.toFixed(2)}`
+      : `Raw model values: content ${contentScore?.toFixed(2)}, peers ${collabScore?.toFixed(2)}`
+    : null;
+  const displayTitle = humanizeResourceTitle(title);
+  const topicLine = humanizeTopicLine(topic);
+  const subtitle = [topicLine, contentType].filter(Boolean).join(" · ");
+  const matchStrength = matchStrengthForLearner(score);
   const compactDescription = description ? shortenText(description, 140) : null;
 
   const notifyInteractionUpdated = () => {
@@ -126,11 +151,10 @@ export default function RecommendationCard({
       setActiveSessionResourceId(active.resourceId);
       setActiveSessionResourceTitle(active.resourceTitle ?? null);
 
-      // Backfill legacy active sessions that were created before resourceTitle existed.
       if (!active.resourceTitle && active.resourceId === resourceId) {
         setActiveSession(userId, {
           ...active,
-          resourceTitle: title,
+          resourceTitle: displayTitle,
         });
       }
 
@@ -147,7 +171,7 @@ export default function RecommendationCard({
       window.removeEventListener("active-session-changed", syncFromActiveSession);
       window.removeEventListener("storage", syncFromActiveSession);
     };
-  }, [userId, resourceId, hasCompleted]);
+  }, [userId, resourceId, hasCompleted, displayTitle]);
 
   useEffect(() => {
     if (!sessionStartedAtMs || hasCompleted) return;
@@ -195,7 +219,7 @@ export default function RecommendationCard({
       setActiveSession(userId, {
         userId,
         resourceId,
-        resourceTitle: title,
+        resourceTitle: displayTitle,
         startedAtMs: startedAt,
       });
       setOk("Session started. Now complete it when you finish studying.");
@@ -300,6 +324,7 @@ export default function RecommendationCard({
             {durationMinutes} min
           </span>
           <span
+            title={matchStrength.hint}
             style={{
               border: "1px solid var(--border)",
               background: "rgba(245, 158, 11, 0.12)",
@@ -308,17 +333,26 @@ export default function RecommendationCard({
               fontSize: 12,
               color: "var(--color-recommend-500)",
               fontWeight: 800,
+              cursor: "help",
             }}
           >
-            AI score: {score.toFixed(2)}
+            {matchStrength.label}
           </span>
         </div>
       </div>
-      <h3 style={{ margin: 0 }}>{title}</h3>
+      <h3 style={{ margin: 0 }}>{displayTitle}</h3>
       <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 13 }}>{subtitle}</p>
-      <p style={{ margin: "8px 0 0 0", color: "var(--muted)" }}>💡 {friendlyReason}</p>
+      <p style={{ margin: "8px 0 0 0", color: "var(--muted)" }}>{friendlyReason}</p>
       {technicalReason ? (
-        <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 12, opacity: 0.9 }}>{technicalReason}</p>
+        <details style={{ margin: "10px 0 0 0", color: "var(--muted)", fontSize: 13 }}>
+          <summary style={{ cursor: "pointer", color: "var(--text)", fontWeight: 600 }}>
+            How this pick was chosen
+          </summary>
+          <p style={{ margin: "8px 0 0 0", lineHeight: 1.5 }}>{technicalReason}</p>
+          {modelBreakdown ? (
+            <p style={{ margin: "6px 0 0 0", lineHeight: 1.5, opacity: 0.8 }}>{modelBreakdown}</p>
+          ) : null}
+        </details>
       ) : null}
       {compactDescription ? (
         <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 12, opacity: 0.85 }}>{compactDescription}</p>
@@ -330,9 +364,9 @@ export default function RecommendationCard({
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
             You already have another active study session
             {activeSessionResourceTitle
-              ? `: "${activeSessionResourceTitle}".`
+              ? `: “${activeSessionResourceTitle}”.`
               : activeSessionResourceId
-                ? ` (${activeSessionResourceId.slice(0, 8)}).`
+                ? " for another resource."
                 : "."}
             Close it first if you want to start this resource.
           </p>
