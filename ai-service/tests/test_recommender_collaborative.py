@@ -1,4 +1,25 @@
+import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+
 from recommender.collaborative import generate_collaborative
+
+
+def test_collaborative_target_row_matches_full_cosine_similarity():
+    """One-row cosine_similarity(U, M) equals the corresponding row of cosine_similarity(M)."""
+    mat = pd.DataFrame(
+        [[1.0, 0.0, 2.0], [0.0, 1.0, 1.0], [2.0, 1.0, 0.0]],
+        index=["u1", "u2", "u3"],
+        columns=["c", "a", "b"],
+    )
+    uid = "u2"
+    full = cosine_similarity(mat.to_numpy(dtype=np.float64))
+    row_full = full[mat.index.get_loc(uid)]
+    row_partial = cosine_similarity(
+        mat.loc[[uid]].to_numpy(dtype=np.float64),
+        mat.to_numpy(dtype=np.float64),
+    )[0]
+    np.testing.assert_allclose(row_full, row_partial, rtol=1e-9, atol=1e-9)
 
 
 def test_collaborative_excludes_completed_and_ranks_by_similarity():
