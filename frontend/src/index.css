@@ -36,6 +36,29 @@
   --radius-lg: 16px;
   --radius-md: 12px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --sidebar-bg: #151f2e;
+  --sidebar-text: rgba(241, 245, 249, 0.98);
+  --sidebar-muted: rgba(148, 163, 184, 0.88);
+  --sidebar-edge: rgba(100, 116, 139, 0.35);
+  --sidebar-divider: rgba(148, 163, 184, 0.12);
+  --sidebar-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-active-bg: rgba(37, 99, 235, 0.32);
+  --sidebar-active-text: #f8fafc;
+  --sidebar-active-border: rgba(147, 197, 253, 0.28);
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 * {
@@ -71,5 +94,15 @@ a {
     --muted: rgba(71, 85, 105, 0.98);
     --border: rgba(71, 85, 105, 0.22);
     --border-strong: rgba(71, 85, 105, 0.35);
+
+    --sidebar-bg: #e8edf3;
+    --sidebar-text: rgba(15, 23, 42, 0.96);
+    --sidebar-muted: rgba(71, 85, 105, 0.92);
+    --sidebar-edge: rgba(71, 85, 105, 0.18);
+    --sidebar-divider: rgba(71, 85, 105, 0.12);
+    --sidebar-hover: rgba(15, 23, 42, 0.06);
+    --sidebar-active-bg: rgba(37, 99, 235, 0.16);
+    --sidebar-active-text: rgba(15, 23, 42, 0.98);
+    --sidebar-active-border: rgba(37, 99, 235, 0.35);
   }
 }
