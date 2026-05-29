@@ -3,6 +3,7 @@ using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using System.Collections.Concurrent;
 
 namespace EducationalCompanion.Api.Services.Implementations;
 
@@ -14,6 +15,7 @@ public class RecommendationService : IRecommendationService
     private const int MaxExplanationLength = 1000;
     private const double AutoTaskMinScore = 0.65;
     private const int AutoTaskFallbackCount = 2;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> UserRecommendationLocks = new();
 
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
@@ -37,60 +39,74 @@ public class RecommendationService : IRecommendationService
         CreateRecommendationsBatchRequest request,
         CancellationToken ct = default)
     {
-        if (request.Recommendations is null || request.Recommendations.Count == 0)
-            throw new ValidationException("At least one recommendation is required.");
-
-        await EnsureUserExistsAsync(userId, ct);
-
-        foreach (var item in request.Recommendations)
+        var userLock = UserRecommendationLocks.GetOrAdd(userId, static _ => new SemaphoreSlim(1, 1));
+        await userLock.WaitAsync(ct);
+        try
         {
-            ValidateItem(item);
-            await EnsureLearningResourceExistsAsync(item.LearningResourceId, ct);
-        }
+            if (request.Recommendations is null || request.Recommendations.Count == 0)
+                throw new ValidationException("At least one recommendation is required.");
 
-        var replaced = false;
-        if (request.ReplaceExisting)
-        {
-            await _recommendationRepo.DeleteByUserIdAsync(userId, ct);
-            replaced = true;
-        }
+            await EnsureUserExistsAsync(userId, ct);
 
-        var entities = request.Recommendations
-            .Select(item => new Recommendation
+            foreach (var item in request.Recommendations)
             {
-                UserId = userId,
-                LearningResourceId = item.LearningResourceId,
-                Score = item.Score,
-                AlgorithmUsed = item.AlgorithmUsed.Trim(),
-                Explanation = item.Explanation.Trim()
-            })
-            .ToList();
+                ValidateItem(item);
+                await EnsureLearningResourceExistsAsync(item.LearningResourceId, ct);
+            }
 
-        foreach (var entity in entities)
-            await _recommendationRepo.AddAsync(entity, ct);
+            var replaced = false;
+            if (request.ReplaceExisting)
+            {
+                await _recommendationRepo.DeleteByUserIdAsync(userId, ct);
+                replaced = true;
+            }
 
-        await _recommendationRepo.SaveChangesAsync(ct);
-        var taskCandidateIds = entities
-            .Where(e => e.Score >= AutoTaskMinScore)
-            .OrderByDescending(e => e.Score)
-            .Select(e => e.LearningResourceId)
-            .ToList();
+            var dedupedRecommendations = request.Recommendations
+                .OrderByDescending(item => item.Score)
+                .DistinctBy(item => item.LearningResourceId)
+                .ToList();
 
-        if (taskCandidateIds.Count == 0)
-        {
-            taskCandidateIds = entities
+            var entities = dedupedRecommendations
+                .Select(item => new Recommendation
+                {
+                    UserId = userId,
+                    LearningResourceId = item.LearningResourceId,
+                    Score = item.Score,
+                    AlgorithmUsed = item.AlgorithmUsed.Trim(),
+                    Explanation = item.Explanation.Trim()
+                })
+                .ToList();
+
+            foreach (var entity in entities)
+                await _recommendationRepo.AddAsync(entity, ct);
+
+            await _recommendationRepo.SaveChangesAsync(ct);
+            var taskCandidateIds = entities
+                .Where(e => e.Score >= AutoTaskMinScore)
                 .OrderByDescending(e => e.Score)
-                .Take(AutoTaskFallbackCount)
                 .Select(e => e.LearningResourceId)
                 .ToList();
+
+            if (taskCandidateIds.Count == 0)
+            {
+                taskCandidateIds = entities
+                    .OrderByDescending(e => e.Score)
+                    .Take(AutoTaskFallbackCount)
+                    .Select(e => e.LearningResourceId)
+                    .ToList();
+            }
+
+            await _studyTaskService.EnsurePendingTasksForRecommendationsAsync(
+                userId,
+                taskCandidateIds,
+                ct);
+
+            return new CreatedRecommendationsResponse(userId, entities.Count, replaced);
         }
-
-        await _studyTaskService.EnsurePendingTasksForRecommendationsAsync(
-            userId,
-            taskCandidateIds,
-            ct);
-
-        return new CreatedRecommendationsResponse(userId, entities.Count, replaced);
+        finally
+        {
+            userLock.Release();
+        }
     }
 
     private async Task EnsureUserExistsAsync(string userId, CancellationToken ct)
