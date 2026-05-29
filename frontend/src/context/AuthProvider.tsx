@@ -1,40 +1,7 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { clearStoredAuthSession, getStoredAuthSession } from "../services/authStorage";
 import { getCurrentUser, login, logout, register } from "../services/api";
-
-type AuthUser = {
-  userId: string;
-  email: string;
-};
-
-type RegisterPayload = {
-  email: string;
-  password: string;
-  dailyAvailableMinutes: number;
-};
-
-type LoginPayload = {
-  email: string;
-  password: string;
-};
-
-export type AuthContextValue = {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-  login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
-  logout: () => Promise<void>;
-};
-
-export const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  isAuthenticated: false,
-  loading: true,
-  login: async () => {},
-  register: async () => {},
-  logout: async () => {},
-});
+import { AuthContext, type AuthContextValue, type AuthUser } from "./AuthContextCore";
 
 type Props = {
   children: React.ReactNode;
@@ -63,7 +30,7 @@ export function AuthProvider({ children }: Props) {
       }
     };
 
-    hydrate();
+    void hydrate();
   }, []);
 
   const value = useMemo<AuthContextValue>(
