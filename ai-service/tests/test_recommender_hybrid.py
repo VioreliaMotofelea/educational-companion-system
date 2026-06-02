@@ -1,6 +1,5 @@
 import pytest
 
-from models.recommendation_models import RecommendationItem
 from recommender.hybrid import HYBRID_VARIANT_NO_DIFFICULTY, generate_hybrid
 
 
@@ -15,40 +14,19 @@ def test_hybrid_scoring_and_ranking_with_difficulty(monkeypatch):
 
     interactions = [{"learningResourceId": "r1", "interactionType": "Completed"}]
 
-    def fake_content_based(user, interactions, resources, top_k):
-        return [
-            RecommendationItem(
-                learningResourceId="r2",
-                score=0.2,
-                algorithmUsed="ContentBased-TFIDF",
-                explanation="x",
-            ),
-            RecommendationItem(
-                learningResourceId="r3",
-                score=1.0,
-                algorithmUsed="ContentBased-TFIDF",
-                explanation="y",
-            ),
-        ]
-
-    def fake_collab(user_id, all_users_interactions, resources, top_k):
-        return [
-            RecommendationItem(
-                learningResourceId="r2",
-                score=0.0,
-                algorithmUsed="Collaborative-Cosine-KNN",
-                explanation="x",
-            ),
-            RecommendationItem(
-                learningResourceId="r3",
-                score=0.5,
-                algorithmUsed="Collaborative-Cosine-KNN",
-                explanation="y",
-            ),
-        ]
-
-    monkeypatch.setattr(hybrid_mod, "generate_content_based", fake_content_based)
-    monkeypatch.setattr(hybrid_mod, "generate_collaborative", fake_collab)
+    monkeypatch.setattr(
+        hybrid_mod,
+        "compute_tfidf_score_map",
+        lambda interactions, resources: {"r2": 0.2, "r3": 1.0},
+    )
+    monkeypatch.setattr(
+        hybrid_mod,
+        "build_collaborative_score_map",
+        lambda user_id, all_users_interactions, resources, prepared=None: {
+            "r2": 0.0,
+            "r3": 0.5,
+        },
+    )
 
     recs = generate_hybrid(
         user={"userId": "u1", "preferences": {"preferredDifficulty": 3}},
@@ -83,8 +61,12 @@ def test_hybrid_fallback_to_user_preferences_when_no_mastery(monkeypatch):
     ]
     interactions = [{"learningResourceId": "r1", "interactionType": "Completed"}]
 
-    monkeypatch.setattr(hybrid_mod, "generate_content_based", lambda *args, **kwargs: [])
-    monkeypatch.setattr(hybrid_mod, "generate_collaborative", lambda *args, **kwargs: [])
+    monkeypatch.setattr(hybrid_mod, "compute_tfidf_score_map", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        hybrid_mod,
+        "build_collaborative_score_map",
+        lambda *args, **kwargs: {},
+    )
 
     recs = generate_hybrid(
         user={"userId": "u1", "preferences": {"preferredDifficulty": 2}},
@@ -115,40 +97,19 @@ def test_hybrid_no_difficulty_renormalized_weights_and_explanation(monkeypatch):
     ]
     interactions = [{"learningResourceId": "r1", "interactionType": "Completed"}]
 
-    def fake_content_based(user, interactions, resources, top_k):
-        return [
-            RecommendationItem(
-                learningResourceId="r2",
-                score=0.2,
-                algorithmUsed="ContentBased-TFIDF",
-                explanation="x",
-            ),
-            RecommendationItem(
-                learningResourceId="r3",
-                score=1.0,
-                algorithmUsed="ContentBased-TFIDF",
-                explanation="y",
-            ),
-        ]
-
-    def fake_collab(user_id, all_users_interactions, resources, top_k):
-        return [
-            RecommendationItem(
-                learningResourceId="r2",
-                score=0.0,
-                algorithmUsed="Collaborative-Cosine-KNN",
-                explanation="x",
-            ),
-            RecommendationItem(
-                learningResourceId="r3",
-                score=0.5,
-                algorithmUsed="Collaborative-Cosine-KNN",
-                explanation="y",
-            ),
-        ]
-
-    monkeypatch.setattr(hybrid_mod, "generate_content_based", fake_content_based)
-    monkeypatch.setattr(hybrid_mod, "generate_collaborative", fake_collab)
+    monkeypatch.setattr(
+        hybrid_mod,
+        "compute_tfidf_score_map",
+        lambda interactions, resources: {"r2": 0.2, "r3": 1.0},
+    )
+    monkeypatch.setattr(
+        hybrid_mod,
+        "build_collaborative_score_map",
+        lambda user_id, all_users_interactions, resources, prepared=None: {
+            "r2": 0.0,
+            "r3": 0.5,
+        },
+    )
 
     recs = generate_hybrid(
         user={"userId": "u1", "preferences": {"preferredDifficulty": 3}},
@@ -180,4 +141,3 @@ def test_generate_hybrid_rejects_unknown_variant():
             None,
             variant="invalid",
         )
-
