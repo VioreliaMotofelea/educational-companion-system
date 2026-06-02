@@ -24,8 +24,39 @@ HYBRID_NO_DIFF_CONTENT_WEIGHT = 0.625   # 0.5 / (0.5 + 0.3)
 HYBRID_NO_DIFF_COLLAB_WEIGHT = 0.375    # 0.3 / (0.5 + 0.3)
 
 # Diversity/novelty knobs for top-k reranking
+# Hybrid popularity/novelty bonus uses Completed interaction counts
 HYBRID_TOPIC_PREFERENCE_BONUS = float(os.environ.get("HYBRID_TOPIC_PREFERENCE_BONUS", "0.12"))
 HYBRID_NOVELTY_BONUS = float(os.environ.get("HYBRID_NOVELTY_BONUS", "0.08"))
 HYBRID_TOPIC_REPEAT_PENALTY = float(os.environ.get("HYBRID_TOPIC_REPEAT_PENALTY", "0.20"))
 
 EVALUATION_LOG_FILE = str(Path(__file__).resolve().parent / "evaluation" / "recommendation_logs.json")
+
+# semantic content-based path - disabled by default
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes")
+
+
+SEMANTIC_CONTENT_ENABLED = _env_bool("SEMANTIC_CONTENT_ENABLED", False)
+SEMANTIC_MODEL_NAME = os.environ.get(
+    "SEMANTIC_MODEL_NAME",
+    "sentence-transformers/all-MiniLM-L6-v2",
+)
+SEMANTIC_CACHE_DIR = Path(
+    os.environ.get(
+        "SEMANTIC_CACHE_DIR",
+        str(Path(__file__).resolve().parent / "cache" / "semantic_embeddings"),
+    )
+)
+
+_CONTENT_FUSION_RAW = os.environ.get("CONTENT_FUSION_MODE", "tfidf_only").strip().lower()
+_CONTENT_FUSION_ALLOWED = frozenset({"tfidf_only", "semantic_only", "tfidf_semantic"})
+CONTENT_FUSION_MODE = (
+    _CONTENT_FUSION_RAW if _CONTENT_FUSION_RAW in _CONTENT_FUSION_ALLOWED else "tfidf_only"
+)
+
+CONTENT_TFIDF_SUBWEIGHT = float(os.environ.get("CONTENT_TFIDF_SUBWEIGHT", "0.5"))
+CONTENT_SEMANTIC_SUBWEIGHT = float(os.environ.get("CONTENT_SEMANTIC_SUBWEIGHT", "0.5"))

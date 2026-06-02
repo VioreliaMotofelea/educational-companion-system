@@ -27,9 +27,11 @@ def clear_backend_data_cache() -> None:
     try:
         from recommender.collaborative import clear_collaborative_matrix_cache
         from recommender.content_based import clear_content_based_tfidf_cache
+        from recommender.content_semantic import clear_content_semantic_cache
 
         clear_collaborative_matrix_cache()
         clear_content_based_tfidf_cache()
+        clear_content_semantic_cache()
     except ImportError:
         pass
 
