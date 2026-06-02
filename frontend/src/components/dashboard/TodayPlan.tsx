@@ -3,7 +3,13 @@ import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useRecommendations } from "../../hooks/useRecommendations";
 import { useUser } from "../../hooks/useUser";
 import { UI_LOCALE } from "../../constants/uiLocale";
-import { humanizeResourceTitle, humanizeTopicLine } from "../../utils/recommendationUtils";
+import {
+  friendlyRecommendationLoadError,
+  humanizeResourceTitle,
+  humanizeTopicLine,
+  learnerFacingRecommendationReason,
+  matchStrengthForLearner,
+} from "../../utils/recommendationUtils";
 
 type Props = {
   title?: string;
@@ -35,10 +41,12 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
     const blocks: Array<{
       title: string;
       reason: string;
+      matchLabel: string;
       startMinutes: number;
       endMinutes: number;
       durationMinutes: number;
       topic: string;
+      contentType: string;
       difficulty: number;
       resourceId: string;
     }> = [];
@@ -55,11 +63,13 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
 
       blocks.push({
         title: humanizeResourceTitle(rec.resource.title),
-        reason: rec.explanation,
+        reason: learnerFacingRecommendationReason(rec.explanation),
+        matchLabel: matchStrengthForLearner(rec.score).label,
         startMinutes: cursor,
         endMinutes: cursor + duration,
         durationMinutes: duration,
         topic: humanizeTopicLine(rec.resource.topic),
+        contentType: rec.resource.contentType,
         difficulty: rec.resource.difficulty,
         resourceId: rec.resource.id,
       });
@@ -89,23 +99,38 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
     return (
       <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
         <h3 style={{ marginTop: 0 }}>{title}</h3>
-        <p style={{ margin: "8px 0 0 0", color: "rgba(239, 68, 68, 0.95)" }}>{recError}</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
+        <div
           style={{
             marginTop: 12,
-            background: "var(--color-ai-600)",
-            color: "#fff",
-            border: "none",
+            padding: 14,
             borderRadius: "var(--radius-md)",
-            padding: "8px 14px",
-            cursor: "pointer",
-            fontWeight: 700,
+            border: "1px solid rgba(251, 191, 36, 0.35)",
+            background: "rgba(251, 191, 36, 0.08)",
           }}
         >
-          Try again
-        </button>
+          <p style={{ margin: 0, color: "var(--text)", lineHeight: 1.55, fontWeight: 600 }}>
+            Could not build today&apos;s schedule yet
+          </p>
+          <p style={{ margin: "8px 0 0 0", color: "var(--muted)", lineHeight: 1.5, fontSize: 14 }}>
+            {friendlyRecommendationLoadError(recError)}
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            style={{
+              marginTop: 12,
+              background: "var(--color-ai-600)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 14px",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Try again
+          </button>
+        </div>
       </section>
     );
   }
@@ -141,27 +166,51 @@ export default function TodayPlan({ title = "Today's plan" }: Props) {
                   border: "1px solid var(--border)",
                   background: "rgba(255,255,255,0.03)",
                   borderRadius: "var(--radius-md)",
-                  padding: 12,
+                  padding: 14,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 800, color: "var(--text)" }}>
-                      {idx + 1}. {b.title}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontWeight: 800, color: "var(--text)" }}>
+                        {idx + 1}. {b.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: "rgba(245, 158, 11, 0.15)",
+                          color: "var(--color-recommend-500)",
+                          border: "1px solid rgba(245, 158, 11, 0.35)",
+                        }}
+                      >
+                        {b.matchLabel}
+                      </span>
                     </div>
-                    <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                      Topic: <b>{b.topic}</b> • Level: <b style={{ color: "var(--color-ai-600)" }}>{b.difficulty}/5</b>
+                    <div style={{ color: "var(--muted)", marginTop: 6, fontSize: 13 }}>
+                      {b.topic} · {b.contentType} · Level {b.difficulty}/5
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 800 }}>
+                  <div
+                    style={{
+                      textAlign: "right",
+                      flexShrink: 0,
+                      padding: "6px 10px",
+                      borderRadius: "var(--radius-md)",
+                      background: "rgba(99, 102, 241, 0.12)",
+                      border: "1px solid rgba(99, 102, 241, 0.25)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--color-ai-600)" }}>
                       {formatTime(start)} – {formatTime(end)}
                     </div>
-                    <div style={{ color: "var(--muted)", marginTop: 4 }}>{b.durationMinutes} min</div>
+                    <div style={{ color: "var(--muted)", marginTop: 2, fontSize: 12 }}>{b.durationMinutes} min</div>
                   </div>
                 </div>
 
-                <p style={{ margin: "10px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.45 }}>{b.reason}</p>
+                <p style={{ margin: "12px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>{b.reason}</p>
               </div>
             );
           })}

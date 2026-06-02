@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  friendlyHybridReason,
+  friendlyRecommendationLoadError,
   humanizeResourceTitle,
   humanizeTopicLine,
+  learnerFacingRecommendationReason,
   matchStrengthForLearner,
+  parseHybridExplanation,
 } from "./recommendationUtils";
 
 describe("humanizeResourceTitle", () => {
@@ -73,5 +77,66 @@ describe("matchStrengthForLearner", () => {
   it("treats non-finite scores as zero", () => {
     expect(matchStrengthForLearner(Number.NaN).label).toBe("Worth trying");
     expect(matchStrengthForLearner(Number.POSITIVE_INFINITY).label).toBe("Worth trying");
+  });
+});
+
+describe("parseHybridExplanation", () => {
+  it("parses classic TF-IDF hybrid explanations", () => {
+    const parsed = parseHybridExplanation(
+      "Content match 1.00, similar users 0.00, difficulty fit 1.00 (suggested level 2)."
+    );
+    expect(parsed).toEqual({
+      contentScore: 1,
+      collabScore: 0,
+      difficultyScore: 1,
+      suggestedLevel: 2,
+      usesSemanticContent: false,
+    });
+  });
+
+  it("parses semantic-only hybrid explanations", () => {
+    const parsed = parseHybridExplanation(
+      "Semantic content match 0.98, similar users 0.00, difficulty fit 1.00 (suggested level 2)."
+    );
+    expect(parsed?.usesSemanticContent).toBe(true);
+    expect(parsed?.contentScore).toBe(0.98);
+  });
+
+  it("parses fused TF-IDF+semantic explanations", () => {
+    const parsed = parseHybridExplanation(
+      "Content match 0.82 (TF-IDF+semantic), similar users 0.15, difficulty fit 0.90 (suggested level 2)."
+    );
+    expect(parsed?.contentScore).toBe(0.82);
+    expect(parsed?.usesSemanticContent).toBe(false);
+  });
+});
+
+describe("friendlyHybridReason", () => {
+  it("uses semantic wording when semantic content is active", () => {
+    const parsed = parseHybridExplanation(
+      "Semantic content match 1.00, similar users 0.00, difficulty fit 1.00 (suggested level 2)."
+    );
+    expect(parsed).not.toBeNull();
+    expect(friendlyHybridReason(parsed!)).toContain("semantically similar");
+  });
+});
+
+describe("learnerFacingRecommendationReason", () => {
+  it("converts hybrid technical explanation to friendly text", () => {
+    const friendly = learnerFacingRecommendationReason(
+      "Semantic content match 1.00, similar users 0.00, difficulty fit 1.00 (suggested level 2)."
+    );
+    expect(friendly).toContain("semantically similar");
+    expect(friendly).not.toContain("similar users 0.00");
+  });
+});
+
+describe("friendlyRecommendationLoadError", () => {
+  it("hides raw JSON from AI 500 errors", () => {
+    const msg = friendlyRecommendationLoadError(
+      'Recommendation generation failed: AI service returned 500: {"detail":"An unexpected internal server error occurred."}'
+    );
+    expect(msg).not.toContain("{");
+    expect(msg).toContain("Try again");
   });
 });

@@ -1,10 +1,13 @@
 import { createInteraction } from "../../services/api";
 import { useEffect, useState } from "react";
 import {
+  friendlyHybridReason,
   humanizeResourceTitle,
   humanizeTopicLine,
+  hybridModelBreakdown,
+  hybridTechnicalReason,
   matchStrengthForLearner,
-  scoreBandLabel,
+  parseHybridExplanation,
 } from "../../utils/recommendationUtils";
 
 type Props = {
@@ -98,31 +101,10 @@ export default function RecommendationCard({
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const fullReasonMatch = reason.match(
-    /Content match ([0-9.]+), similar users ([0-9.]+), difficulty fit ([0-9.]+) \(suggested level ([0-9]+)\)\.?/
-  );
-  const noDifficultyReasonMatch = reason.match(
-    /Content match ([0-9.]+), similar users ([0-9.]+)\.\s*Difficulty is not used/i
-  );
-  const reasonMatch = fullReasonMatch ?? noDifficultyReasonMatch;
-  const friendlyReason = fullReasonMatch
-    ? `Recommended because it lines up with topics you have engaged with and fits your suggested level ${fullReasonMatch[4]}.`
-    : noDifficultyReasonMatch
-      ? "Recommended because it lines up with topics you have engaged with and what similar learners found useful."
-      : reason;
-  const contentScore = reasonMatch ? Number(reasonMatch[1]) : null;
-  const collabScore = reasonMatch ? Number(reasonMatch[2]) : null;
-  const difficultyScore = fullReasonMatch ? Number(fullReasonMatch[3]) : null;
-  const technicalReason = reasonMatch
-    ? fullReasonMatch
-      ? `${scoreBandLabel(contentScore ?? 0, "content")} · ${scoreBandLabel(collabScore ?? 0, "collab")} · ${scoreBandLabel(difficultyScore ?? 0, "difficulty")}`
-      : `${scoreBandLabel(contentScore ?? 0, "content")} · ${scoreBandLabel(collabScore ?? 0, "collab")}`
-    : null;
-  const modelBreakdown = reasonMatch
-    ? fullReasonMatch
-      ? `Raw model values: content ${contentScore?.toFixed(2)}, peers ${collabScore?.toFixed(2)}, difficulty ${difficultyScore?.toFixed(2)}`
-      : `Raw model values: content ${contentScore?.toFixed(2)}, peers ${collabScore?.toFixed(2)}`
-    : null;
+  const parsedReason = parseHybridExplanation(reason);
+  const friendlyReason = parsedReason ? friendlyHybridReason(parsedReason) : reason;
+  const technicalReason = parsedReason ? hybridTechnicalReason(parsedReason) : null;
+  const modelBreakdown = parsedReason ? hybridModelBreakdown(parsedReason) : null;
   const displayTitle = humanizeResourceTitle(title);
   const topicLine = humanizeTopicLine(topic);
   const subtitle = [topicLine, contentType].filter(Boolean).join(" · ");
