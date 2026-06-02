@@ -61,49 +61,95 @@ def normalize_score_to_rating(score: float | None) -> int | None:
     return max(1, min(5, int(round((value / 100.0) * 4 + 1))))
 
 
+COURSE_WEEK_SCALE = 30
+
+_CONTENT_TYPE_BY_ACTIVITY: dict[str, str] = {
+    "oucontent": "Video",
+    "ouelluminate": "Video",
+    "homepage": "Article",
+    "resource": "Article",
+    "url": "Article",
+    "page": "Article",
+    "subpage": "Article",
+    "sharedsubpage": "Article",
+    "folder": "Article",
+    "forumng": "Article",
+    "ouwiki": "Article",
+    "glossary": "Article",
+    "oucollaborate": "Article",
+    "dataplus": "Article",
+    "htmlactivity": "Article",
+    "dualpane": "Article",
+    "quiz": "Quiz",
+    "externalquiz": "Quiz",
+    "questionnaire": "Quiz",
+    "repeatactivity": "Quiz",
+}
+
+_DIFFICULTY_BY_ACTIVITY: dict[str, int] = {
+    "homepage": 1,
+    "url": 1,
+    "page": 1,
+    "folder": 1,
+    "oucontent": 2,
+    "ouelluminate": 2,
+    "resource": 2,
+    "subpage": 2,
+    "sharedsubpage": 2,
+    "glossary": 3,
+    "forumng": 3,
+    "ouwiki": 3,
+    "htmlactivity": 3,
+    "oucollaborate": 3,
+    "dualpane": 4,
+    "quiz": 4,
+    "externalquiz": 4,
+    "questionnaire": 4,
+    "repeatactivity": 4,
+    "dataplus": 5,
+}
+
+_ACTIVITY_LABELS: dict[str, str] = {
+    "forumng": "Discussion forum",
+    "oucontent": "Course study material",
+    "homepage": "Course homepage",
+    "resource": "Additional learning resource",
+    "url": "External link",
+    "page": "Course page",
+    "subpage": "Topic page",
+    "sharedsubpage": "Shared topic page",
+    "folder": "Resource folder",
+    "quiz": "Practice quiz",
+    "externalquiz": "External quiz",
+    "questionnaire": "Questionnaire",
+    "repeatactivity": "Repeat activity",
+    "glossary": "Glossary activity",
+    "dataplus": "Data activity",
+    "dualpane": "Interactive activity",
+    "htmlactivity": "HTML learning activity",
+    "oucollaborate": "Collaborative activity",
+    "ouwiki": "Course wiki",
+    "ouelluminate": "Live session recording",
+}
+
+
 def content_type_from_activity(activity_type: str) -> str:
     activity = (activity_type or "").strip().lower()
     if "quiz" in activity or "assessment" in activity:
         return "Quiz"
-    if "video" in activity or "oucontent" in activity:
+    if "video" in activity:
         return "Video"
-    return "Article"
+    return _CONTENT_TYPE_BY_ACTIVITY.get(activity, "Article")
 
 
 def difficulty_from_activity(activity_type: str) -> int:
     activity = (activity_type or "").strip().lower()
-    mapping = {
-        "homepage": 1,
-        "oucontent": 2,
-        "resource": 2,
-        "subpage": 2,
-        "forumng": 3,
-        "glossary": 3,
-        "externalquiz": 4,
-        "quiz": 4,
-        "dualpane": 4,
-        "dataplus": 5,
-        "htmlactivity": 3,
-    }
-    return mapping.get(activity, 3)
+    return _DIFFICULTY_BY_ACTIVITY.get(activity, 3)
 
 
 def activity_label(activity_type: str) -> str:
     activity = (activity_type or "").strip().lower()
-    labels = {
-        "forumng": "Discussion forum",
-        "oucontent": "Course study material",
-        "homepage": "Course homepage",
-        "resource": "Additional learning resource",
-        "subpage": "Topic page",
-        "quiz": "Practice quiz",
-        "externalquiz": "External quiz",
-        "glossary": "Glossary activity",
-        "dataplus": "Data activity",
-        "dualpane": "Interactive activity",
-        "htmlactivity": "HTML learning activity",
-    }
-    return labels.get(activity, activity_type.strip().title() if activity_type else "Learning activity")
+    return _ACTIVITY_LABELS.get(activity, activity_type.strip().title() if activity_type else "Learning activity")
 
 
 def week_label(week_from: object, week_to: object) -> str:
@@ -115,6 +161,142 @@ def week_label(week_from: object, week_to: object) -> str:
         return f"Weeks {start}-{end}"
     week = start if start > 0 else end
     return f"Week {week}"
+
+
+def normalize_metadata_string(value: object) -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except Exception:
+        pass
+    return " ".join(str(value).split()).strip()
+
+
+def build_resource_metadata_fields(
+    *,
+    code_module: object,
+    code_presentation: object,
+    activity_type: object,
+    week_from: object,
+    week_to: object,
+) -> dict[str, str]:
+    """
+    Explicit structured metadata for semantic experiments.
+
+    Only non-empty values are returned. ``topic`` remains the module code for
+    backward compatibility; ``codeModule`` duplicates it for clarity.
+    """
+    module = normalize_metadata_string(code_module)
+    presentation = normalize_metadata_string(code_presentation)
+    raw_activity = normalize_metadata_string(activity_type).lower()
+    label = activity_label(str(activity_type or ""))
+    weeks = week_label(week_from, week_to)
+
+    fields: dict[str, str] = {}
+    if module:
+        fields["codeModule"] = module
+    if presentation:
+        fields["presentation"] = presentation
+    if raw_activity:
+        fields["activityType"] = raw_activity
+    if label:
+        fields["activityLabel"] = label
+    if weeks:
+        fields["week"] = weeks
+    return fields
+
+
+def load_presentation_lengths(raw_dir: Path) -> Dict[Tuple[str, str], int]:
+    courses = pd.read_csv(raw_dir / "courses.csv")
+    lengths: Dict[Tuple[str, str], int] = {}
+    for row in courses.itertuples(index=False):
+        length = safe_int(getattr(row, "module_presentation_length", 0), 0)
+        if length > 0:
+            lengths[(str(row.code_module), str(row.code_presentation))] = length
+    return lengths
+
+
+def explicit_week_number(week_from: object, week_to: object) -> int:
+    """Return a single positive week index from vle week_from/week_to, else 0."""
+    start = safe_int(week_from, 0)
+    end = safe_int(week_to, 0)
+    if start > 0 and end > 0:
+        return int(round((start + end) / 2))
+    if start > 0:
+        return start
+    if end > 0:
+        return end
+    return 0
+
+
+def infer_week_number(typical_day_offset: int, presentation_length_days: int) -> int:
+    """
+    Map click-weighted day offset to a 1..30 week index.
+
+    Heuristic: ``week = round(typicalDayOffset / (presentationLengthDays / 30))``,
+    capped to [1, 30]. Matches OULAD's ~30-week presentation structure.
+    """
+    if presentation_length_days <= 0 or typical_day_offset < 0:
+        return 0
+    day_per_week = presentation_length_days / COURSE_WEEK_SCALE
+    if day_per_week <= 0:
+        return 0
+    return max(1, min(COURSE_WEEK_SCALE, int(round(typical_day_offset / day_per_week))))
+
+
+def course_phase_from_week_number(week_num: int) -> str:
+    """Deterministic course phase from a 1..30 week index (equal thirds)."""
+    if week_num <= 0:
+        return ""
+    if week_num <= 10:
+        return "Early"
+    if week_num <= 20:
+        return "Mid-course"
+    return "Late"
+
+
+def build_engagement_and_temporal_fields(
+    *,
+    code_module: str,
+    code_presentation: str,
+    stat: "ResourceStats",
+    presentation_lengths: Dict[Tuple[str, str], int],
+    explicit_week_num: int,
+) -> dict:
+    """Optional engagement/temporal metadata derived from studentVle aggregates."""
+    fields: dict = {}
+    pres_len = presentation_lengths.get((code_module, code_presentation), 0)
+    if pres_len > 0:
+        fields["presentationLengthDays"] = pres_len
+
+    if stat.total_clicks > 0:
+        fields["totalClicks"] = stat.total_clicks
+    if stat.count_pairs > 0:
+        fields["uniqueLearners"] = stat.count_pairs
+    if stat.min_date is not None:
+        fields["activeFromDay"] = int(stat.min_date)
+    if stat.max_date is not None:
+        fields["activeToDay"] = int(stat.max_date)
+
+    typical = 0
+    if stat.total_clicks > 0:
+        typical = int(round(stat.weighted_day_sum / stat.total_clicks))
+        fields["typicalDayOffset"] = typical
+
+    week_num = explicit_week_num
+    if week_num <= 0 and typical >= 0 and pres_len > 0 and stat.total_clicks > 0:
+        week_num = infer_week_number(typical, pres_len)
+        if week_num > 0:
+            fields["weekInferred"] = f"Week {week_num}"
+
+    if week_num > 0:
+        phase = course_phase_from_week_number(week_num)
+        if phase:
+            fields["coursePhase"] = phase
+
+    return fields
 
 
 def load_assessment_course_scores(raw_dir: Path) -> Dict[Tuple[str, str, int], float]:
@@ -180,6 +362,9 @@ def build_users(raw_dir: Path, modules: Set[str] | None = None, max_users: int =
 class ResourceStats:
     total_clicks: int = 0
     count_pairs: int = 0
+    min_date: int | None = None
+    max_date: int | None = None
+    weighted_day_sum: float = 0.0
 
 
 def aggregate_student_vle(
@@ -214,22 +399,41 @@ def aggregate_student_vle(
 
         chunk["sum_click"] = pd.to_numeric(chunk["sum_click"], errors="coerce").fillna(0).astype(int)
         chunk["date"] = pd.to_numeric(chunk["date"], errors="coerce")
+        chunk["weighted_day"] = chunk["date"].fillna(0) * chunk["sum_click"]
 
         grouped = (
             chunk.groupby(["code_module", "code_presentation", "id_student", "id_site"], as_index=False)
-            .agg(total_clicks=("sum_click", "sum"), last_date=("date", "max"))
+            .agg(
+                total_clicks=("sum_click", "sum"),
+                first_date=("date", "min"),
+                last_date=("date", "max"),
+                weighted_day=("weighted_day", "sum"),
+            )
         )
         agg_parts.append(grouped)
 
         site_grouped = (
             grouped.groupby(["code_module", "code_presentation", "id_site"], as_index=False)
-            .agg(total_clicks=("total_clicks", "sum"), count_pairs=("id_student", "count"))
+            .agg(
+                total_clicks=("total_clicks", "sum"),
+                count_pairs=("id_student", "count"),
+                min_date=("first_date", "min"),
+                max_date=("last_date", "max"),
+                weighted_day_sum=("weighted_day", "sum"),
+            )
         )
         for row in site_grouped.itertuples(index=False):
             key = (row.code_module, row.code_presentation, int(row.id_site))
             st = stats.get(key, ResourceStats())
             st.total_clicks += int(row.total_clicks)
             st.count_pairs += int(row.count_pairs)
+            st.weighted_day_sum += float(row.weighted_day_sum)
+            row_min = safe_int(row.min_date, 0)
+            row_max = safe_int(row.max_date, 0)
+            if st.min_date is None or row_min < st.min_date:
+                st.min_date = row_min
+            if st.max_date is None or row_max > st.max_date:
+                st.max_date = row_max
             stats[key] = st
 
     if not agg_parts:
@@ -242,13 +446,17 @@ def aggregate_student_vle(
     )
     return merged, stats
 
-
 def build_resources(
-    raw_dir: Path, stats: Dict[Tuple[str, str, int], ResourceStats], modules: Set[str] | None = None
+    raw_dir: Path,
+    stats: Dict[Tuple[str, str, int], ResourceStats],
+    modules: Set[str] | None = None,
+    presentation_lengths: Dict[Tuple[str, str], int] | None = None,
 ) -> List[dict]:
     vle = pd.read_csv(raw_dir / "vle.csv")
     if modules:
         vle = vle[vle["code_module"].isin(modules)]
+    if presentation_lengths is None:
+        presentation_lengths = load_presentation_lengths(raw_dir)
     resources: List[dict] = []
 
     for row in vle.itertuples(index=False):
@@ -258,7 +466,10 @@ def build_resources(
         estimated_duration = int(max(5, min(180, round(avg_clicks * 0.5))))
 
         label = activity_label(str(row.activity_type))
-        weeks = week_label(getattr(row, "week_from", 0), getattr(row, "week_to", 0))
+        week_from = getattr(row, "week_from", 0)
+        week_to = getattr(row, "week_to", 0)
+        weeks = week_label(week_from, week_to)
+        explicit_week_num = explicit_week_number(week_from, week_to)
         resource_code = int(row.id_site)
         if weeks:
             title = f"{weeks} {label} - Module {row.code_module}"
@@ -272,19 +483,35 @@ def build_resources(
         if weeks:
             description += f" The activity is associated with {weeks.lower()} of the course timeline."
 
-        resources.append(
-            {
-                "id": stable_resource_id(row.code_module, row.code_presentation, row.id_site),
-                "title": title[:200],
-                "description": description[:1000],
-                "topic": str(row.code_module)[:100],
-                "difficulty": difficulty_from_activity(str(row.activity_type)),
-                "estimatedDurationMinutes": estimated_duration,
-                "contentType": content_type_from_activity(str(row.activity_type)),
-            }
+        resource = {
+            "id": stable_resource_id(row.code_module, row.code_presentation, row.id_site),
+            "title": title[:200],
+            "description": description[:1000],
+            "topic": str(row.code_module)[:100],
+            "difficulty": difficulty_from_activity(str(row.activity_type)),
+            "estimatedDurationMinutes": estimated_duration,
+            "contentType": content_type_from_activity(str(row.activity_type)),
+        }
+        resource.update(
+            build_resource_metadata_fields(
+                code_module=row.code_module,
+                code_presentation=row.code_presentation,
+                activity_type=row.activity_type,
+                week_from=week_from,
+                week_to=week_to,
+            )
         )
+        resource.update(
+            build_engagement_and_temporal_fields(
+                code_module=str(row.code_module),
+                code_presentation=str(row.code_presentation),
+                stat=stat,
+                presentation_lengths=presentation_lengths,
+                explicit_week_num=explicit_week_num,
+            )
+        )
+        resources.append(resource)
 
-    # Keep one record per deterministic id.
     dedup: Dict[str, dict] = {item["id"]: item for item in resources}
     return list(dedup.values())
 
@@ -433,8 +660,14 @@ def main() -> None:
         allowed_users=user_ids,
     )
 
-    print(f"[3/5] Building resources from {raw_dir / 'vle.csv'}")
-    resources = build_resources(raw_dir, resource_stats, modules=modules)
+    print(f"[3/5] Building resources from {raw_dir / 'vle.csv'} + {raw_dir / 'courses.csv'}")
+    presentation_lengths = load_presentation_lengths(raw_dir)
+    resources = build_resources(
+        raw_dir,
+        resource_stats,
+        modules=modules,
+        presentation_lengths=presentation_lengths,
+    )
     resource_ids = {r["id"] for r in resources}
 
     print(f"[4/5] Mapping assessment scores from {raw_dir / 'studentAssessment.csv'}")
