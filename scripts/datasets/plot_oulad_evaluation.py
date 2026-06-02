@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Build figures and tables from OULAD offline `evaluation_report.json` 
-(produced by `evaluate_oulad_offline.py`).
+Build figures and tables from OULAD offline `evaluation_report.json`
+(produced by `evaluate_oulad_offline.py`)
+
+Novelty/coverage metrics in the report assume Completed train interaction
+counts
 
 Outputs:
   - figures/ranking_metrics_comparison.png
