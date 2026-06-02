@@ -74,6 +74,7 @@ dist/
 build/
 .vite/
 .cache/
+ai-service/cache/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
