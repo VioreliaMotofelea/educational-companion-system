@@ -155,9 +155,29 @@ User analytics: short summary text and KPIs (for dashboards/reporting).
 
 ---
 
+### GET `/api/users/{id}/resources/accessible`
+
+Returns learning resources the user is allowed to receive in recommendations, based on **visibility** and **scope membership** (fail-closed).
+
+**Rules:**
+
+- `Global` — visible to every user.
+- `CourseOnly` — resource has a course scope row and the user has a matching course membership (`ScopeType` + `ScopeKey`).
+- `GroupOnly` — same pattern with group scopes.
+- `PrivateToUser` — `ownerUserId` must equal the requesting user.
+- Scoped resources **without** scope rows, or private resources **without** an owner, are **not** returned.
+
+**Response 200:** array of `LearningResourceResponse` (same shape as `GET /api/resources`).
+
+**Errors:** 404 if user not found.
+
+Used by the AI service as the **candidate catalog** before ranking. `GET /api/resources` remains the full catalog for admin/demo/evaluation.
+
+---
+
 ### GET `/api/users/{id}/recommendations` (EDM — read)
 
-Personalized recommendations for the user (content list with score and explanation). Ordered by score descending.
+Personalized recommendations for the user (content list with score and explanation). Ordered by score descending. Items whose resource is no longer accessible to the user are **omitted** (privacy).
 
 **Query parameters:**
 
@@ -216,6 +236,10 @@ Creates or replaces recommendations for the user. Used by the AI service to pers
 
 - **recommendations**: array of at least one item. **score**: 0.0–1.0. **algorithmUsed**: required, max 50 chars. **explanation**: required, max 1000 chars.
 - **replaceExisting**: if `true`, all existing recommendations for this user are deleted before inserting the new batch; if `false`, new items are appended.
+- **Access re-validation (fail-closed):** Before persisting, each item is checked against the same rules as `GET .../resources/accessible`. Inaccessible items are **discarded** (not stored); accessible items in the same batch are still saved. The request **succeeds** (`201 Created`) when at least one accessible item remains.
+- **Partial batches:** Example: user can access resource A but not B; AI posts `[A, B]` with `replaceExisting: false` → only A is persisted, B is omitted, `createdCount` is `1`. This is intentional privacy-safe behavior (defense in depth after AI candidate filtering).
+- **Empty accessible set:** With `replaceExisting: true` and no accessible items in the batch, existing recommendations are cleared (`createdCount: 0`). With `replaceExisting: false` and no accessible items, the API returns `400` (at least one accessible recommendation required).
+- **Logging:** When items are discarded, the API logs the user id, counts, `replaceExisting`, and discarded resource ids at Information level.
 
 **Response 201 Created:** `CreatedRecommendationsResponse`
 
@@ -226,6 +250,8 @@ Creates or replaces recommendations for the user. Used by the AI service to pers
   "replacedExisting": true
 }
 ```
+
+**`createdCount` semantics:** Number of recommendation rows **actually persisted** after access filtering and after duplicate `learningResourceId` deduplication (highest score wins). Inaccessible items in the request are not counted. Example: batch `[A, B]` with only A accessible → `createdCount` is `1` even if two items were submitted.
 
 **Headers:** `Location: GET /api/users/{id}/recommendations`.
 
@@ -292,10 +318,17 @@ If all are omitted, returns all resources.
     "topic": "Python",
     "difficulty": 2,
     "estimatedDurationMinutes": 30,
-    "contentType": "Article"
+    "contentType": "Article",
+    "sourceName": "OpenStax",
+    "url": "https://openstax.org/",
+    "accessType": "ExternalUrl",
+    "accessInstructions": null,
+    "visibility": "Global"
   }
 ]
 ```
+
+**Access metadata:** `sourceName` and `url` describe where material comes from; `accessInstructions` explains offline or course-only access when there is no public URL. `accessType`: `NoDirectAccess`, `ExternalUrl`, `InternalPlatform`, `OfflinePhysical`, `CommunicationChannel`. `visibility`: `Global`, `CourseOnly`, `GroupOnly`, `PrivateToUser`. Recommendation ranking uses `GET /api/users/{id}/resources/accessible`, not this endpoint. OCR/file upload is not part of the API.
 
 ---
 
@@ -322,11 +355,18 @@ Creates a new learning resource.
   "topic": "Python",
   "difficulty": 2,
   "estimatedDurationMinutes": 30,
-  "contentType": "Article"
+  "contentType": "Article",
+  "sourceName": "OpenStax",
+  "url": "https://openstax.org/",
+  "accessType": "ExternalUrl",
+  "accessInstructions": null,
+  "visibility": "Global"
 }
 ```
 
 - **title**: required, 1–200 chars. **topic**: required, 1–100 chars. **difficulty**: 1–5. **estimatedDurationMinutes**: 1–9999. **contentType**: required, max 50 chars (e.g. `Article`, `Video`, `Quiz`).
+- **sourceName**: optional, max 150 chars. **url**: optional, absolute `http`/`https` only, max 2048 chars. If **url** is set and **accessType** is omitted, defaults to `ExternalUrl`; if no url, defaults to `NoDirectAccess`.
+- **accessInstructions**: optional, max 1000 chars (e.g. printed worksheet, Moodle folder). **visibility**: optional, defaults to `Global`.
 
 **Response 201 Created:** `LearningResourceResponse`. **Location** header points to `GET /api/resources/{id}`.
 
@@ -445,6 +485,7 @@ Deletes an interaction.
 | PUT | `/api/users/{id}/preferences` | Update preferences |
 | GET | `/api/users/{id}/xp` | XP and level |
 | GET | `/api/users/{id}/interactions` | User’s interactions |
+| GET | `/api/users/{id}/resources/accessible` | Resources eligible for recommendations |
 | GET | `/api/users/{id}/analytics` | EDM analytics |
 | GET | `/api/users/{id}/recommendations` | EDM recommendations (read) |
 | POST | `/api/users/{id}/recommendations` | Write recommendations (AI) |

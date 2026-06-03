@@ -20,8 +20,13 @@ To compute recommendations for a user (or for all users), the AI service typical
 |------|----------|--------|
 | User profile + preferences | `GET /api/users/{userId}` | Level, XP, daily minutes, preferred difficulty, content types, topics (CSV) |
 | User’s interactions | `GET /api/users/{userId}/interactions` | Or `GET /api/interactions?userId={userId}` or `GET /api/interactions/by-user/{userId}`. Use for history (viewed, completed, rated, time spent). |
-| Full resource catalog | `GET /api/resources` | All learning resources (id, title, topic, difficulty, duration, contentType). Filter with `?topic=...&difficulty=...&contentType=...` if needed. |
+| **Accessible resource catalog** | `GET /api/users/{userId}/resources/accessible` | **Use this for ranking.** Only resources the learner may receive (visibility + course/group scope membership + private ownership). Same response shape as `GET /api/resources`. Do **not** rank from the full catalog. |
+| Full resource catalog | `GET /api/resources` | Admin, demo seeding, and **evaluation metrics only** — not for per-user recommendation ranking. |
 | Optional: EDM mastery | `GET /api/users/{userId}/mastery` | Per-topic mastery and suggested difficulty; useful to bias difficulty of recommended resources. |
+
+**Privacy:** If the accessible list is empty, return no recommendations (push an empty batch with `replaceExisting: true`). Do **not** fall back to `GET /api/resources`.
+
+**Ranking inputs:** Use title, topic, description, difficulty, content type, interactions, mastery, etc. Do **not** use `url`, `sourceName`, or `accessInstructions` as ranking features.
 
 **Getting user ids:** The backend does **not** currently expose `GET /api/users` (list all users). If your AI runs in batch over all users, you must either (a) get the list of user ids from your own config/DB, or (b) ask the backend team to add `GET /api/users` returning minimal user list (e.g. ids). For a single-user flow (e.g. on-demand recommendation), the frontend or gateway provides the `userId`.
 
@@ -57,14 +62,22 @@ Replace `{userId}` with the actual user id (string).
 
 **Fields:**
 
-- **recommendations** (array, required): At least one item. Each item has:
-  - **learningResourceId** (UUID): Must be an existing resource id (from `GET /api/resources`).
+- **recommendations** (array, required): At least one item (unless `replaceExisting` is `true` and you intend to clear all). Each item has:
+  - **learningResourceId** (UUID): Must be an existing resource id from the user's **accessible** catalog.
   - **score** (number): 0.0–1.0 (e.g. relevance or confidence).
   - **algorithmUsed** (string, required): Max 50 characters (e.g. `"Hybrid"`, `"ContentBased"`, `"CollaborativeFiltering"`).
   - **explanation** (string, required): Max 1000 characters. Shown to the user (explainability).
 - **replaceExisting** (boolean, optional, default `true`):  
   - `true`: Delete all existing recommendations for this user, then insert the new list (typical “refresh top-N” flow).  
   - `false`: Append to existing recommendations (no delete).
+
+The backend **re-validates access** on every write (defense in depth). Items that reference resources the user cannot access are **discarded**; the request still succeeds when at least one accessible item remains.
+
+**Partial batches (append mode):** If `replaceExisting` is `false` and the batch mixes accessible and inaccessible resources (e.g. A accessible, B not), only accessible items are stored. Example: post `[A, B]` → only A is persisted, `createdCount` is `1`, response is `201 Created`. Inaccessible ids are never saved. Server logs discarded ids at Information level.
+
+**Replace mode:** With `replaceExisting: true`, inaccessible-only batches clear existing recommendations (`createdCount: 0`) rather than leaving stale private/course items visible.
+
+**`createdCount`:** Count of rows actually stored after access filtering and duplicate `learningResourceId` deduplication (highest score kept). Inaccessible submitted items are not counted.
 
 ### Response
 
@@ -85,7 +98,7 @@ Replace `{userId}` with the actual user id (string).
 - **400 Bad Request**: Empty list, score out of [0, 1], missing or too-long `algorithmUsed`/`explanation`.
 - **404 Not Found**: User does not exist, or one of the `learningResourceId` values is not a valid existing resource.
 
-On success, the existing **read** endpoint `GET /api/users/{userId}/recommendations` (and optional `?limit=N`) will return the new recommendations with full resource details and your explanations.
+On success, the existing **read** endpoint `GET /api/users/{userId}/recommendations` (and optional `?limit=N`) will return the new recommendations with full resource details and your explanations (inaccessible resources are filtered out on read).
 
 ---
 
@@ -95,8 +108,9 @@ On success, the existing **read** endpoint `GET /api/users/{userId}/recommendati
 2. **Read:** For each user, call:
    - `GET /api/users/{userId}` (profile + preferences),
    - `GET /api/users/{userId}/interactions` (history),
-   - `GET /api/resources` (catalog).
-3. **Compute:** Run your hybrid (or content-based/collaborative) algorithm. Produce a list of (resource id, score, algorithm name, explanation) per user.
+   - `GET /api/users/{userId}/resources/accessible` (**candidate catalog**),
+   - optionally `GET /api/users/{userId}/mastery`.
+3. **Compute:** If the accessible catalog is empty, skip ranking and POST an empty batch with `replaceExisting: true`. Otherwise run your hybrid algorithm on **only** accessible resources.
 4. **Write:** For each user, call `POST /api/users/{userId}/recommendations` with `replaceExisting: true` and the list of recommendations.
 5. **Optional:** Frontend or another service can then call `GET /api/users/{userId}/recommendations` to show the list with explanations.
 

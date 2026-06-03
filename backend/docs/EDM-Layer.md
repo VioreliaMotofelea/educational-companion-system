@@ -28,7 +28,7 @@ All EDM outputs are derived from existing persistence. No separate EDM database 
 |--------|------------|
 | **UserProfiles** | User existence check; Level, XP (total earned) for analytics KPIs |
 | **UserInteractions** | Viewed/Completed counts, completion rate, average rating, total time spent; completed resources per topic for mastery |
-| **LearningResources** | Topic, Difficulty, metadata; joined with interactions (mastery) and with Recommendations (content list) |
+| **LearningResources** | Topic, Difficulty, access metadata (source, URL, access type/instructions, visibility); joined with interactions (mastery) and with Recommendations (content list). Future: filter catalog by visibility before ranking. |
 | **Recommendations** | Precomputed recommendations per user (LearningResourceId, Score, AlgorithmUsed, Explanation); served as content list |
 | **StudyTasks** | Task counts by status (Completed, Pending, Overdue) for analytics KPIs |
 | **GamificationEvents** | Count of gamification events per user for analytics KPIs |
@@ -126,8 +126,10 @@ This gives a simple rule-based “next difficulty” for adaptive content (e.g. 
 - Recommendations are **stored** in the **Recommendations** table (UserId, LearningResourceId, Score, AlgorithmUsed, Explanation, CreatedAtUtc).
 - The EDM layer **does not generate** recommendations; it **reads** and **serves** them with resource details (title, topic, difficulty, duration, content type, etc.).
 - Results are ordered by **Score** (desc), then **CreatedAtUtc** (desc). Optional query `?limit=N` caps the number returned.
+- **Read-side access filter:** `GetRecommendationsAsync` omits rows whose resource is no longer accessible to the user (visibility + scope membership).
+- **Write-side access filter (AI batch):** `RecommendationService.CreateBatchForUserAsync` re-validates each proposed item before insert. Inaccessible items in a mixed batch are discarded; accessible items are still persisted; the request succeeds when at least one accessible item remains (see API reference for partial-batch behavior).
 
-So: **recommendation generation** (content-based, collaborative, hybrid, or future ML) is a separate process that **writes** into `Recommendations`; the EDM layer only **exposes** that content list to the client.
+So: **recommendation generation** (content-based, collaborative, hybrid, or future ML) is a separate process that **writes** into `Recommendations`; the EDM layer **exposes** that content list to the client and enforces access on read and write.
 
 ---
 
