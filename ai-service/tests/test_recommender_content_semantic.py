@@ -67,6 +67,18 @@ def test_build_resource_semantic_text_skips_empty_and_duplicate_values():
     ]
 
 
+def test_build_resource_semantic_text_includes_extracted_text_summary():
+    text = build_resource_semantic_text(
+        {
+            "title": "DB Notes",
+            "topic": "Databases",
+            "description": "Intro lecture.",
+            "extractedTextSummary": "BCNF decomposition removes redundancy in relational schemas.",
+        }
+    )
+    assert "Summary: BCNF decomposition removes redundancy in relational schemas." in text.splitlines()
+
+
 def test_build_resource_semantic_text_supports_field_aliases():
     text = build_resource_semantic_text(
         {

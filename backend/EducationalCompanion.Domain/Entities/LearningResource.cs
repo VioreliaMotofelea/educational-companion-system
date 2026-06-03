@@ -30,4 +30,6 @@ public class LearningResource : AuditableEntity
     public ICollection<ResourceAccessScope> AccessScopes { get; set; } = new List<ResourceAccessScope>();
     public ResourceMetadata? Metadata { get; set; }
     public ICollection<UserInteraction> Interactions { get; set; } = new List<UserInteraction>();
+    public ICollection<ResourceFile> ResourceFiles { get; set; } = new List<ResourceFile>();
+    public ICollection<ResourceExtractedText> ExtractedTexts { get; set; } = new List<ResourceExtractedText>();
 }

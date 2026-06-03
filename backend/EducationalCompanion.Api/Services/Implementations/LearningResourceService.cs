@@ -16,15 +16,21 @@ public class LearningResourceService : ILearningResourceService
     private readonly ILearningResourceRepository _repo;
     private readonly IResourceAccessRepository _accessRepo;
     private readonly IUserProfileRepository _userProfileRepo;
+    private readonly IResourceExtractedTextRepository _extractedTextRepo;
+    private readonly IResourceFileRepository _resourceFileRepo;
 
     public LearningResourceService(
         ILearningResourceRepository repo,
         IResourceAccessRepository accessRepo,
-        IUserProfileRepository userProfileRepo)
+        IUserProfileRepository userProfileRepo,
+        IResourceExtractedTextRepository extractedTextRepo,
+        IResourceFileRepository resourceFileRepo)
     {
         _repo = repo;
         _accessRepo = accessRepo;
         _userProfileRepo = userProfileRepo;
+        _extractedTextRepo = extractedTextRepo;
+        _resourceFileRepo = resourceFileRepo;
     }
 
     public async Task<IReadOnlyList<LearningResourceResponse>> GetAllAsync(CancellationToken ct)
@@ -122,11 +128,17 @@ public class LearningResourceService : ILearningResourceService
         await _repo.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<LearningResourceResponse>> GetAccessibleForUserAsync(string userId, CancellationToken ct)
+    public async Task<IReadOnlyList<AccessibleLearningResourceResponse>> GetAccessibleForUserAsync(string userId, CancellationToken ct)
     {
         await EnsureUserExistsAsync(userId, ct);
         var items = await _accessRepo.GetAccessibleResourcesForUserAsync(userId, ct);
-        return items.Select(Map).ToList();
+        var ids = items.Select(i => i.Id).ToList();
+        var summaries = await _extractedTextRepo.GetLatestSummariesByResourceIdsAsync(ids, ct);
+        var withFiles = await _resourceFileRepo.GetResourceIdsWithFilesAsync(ids, ct);
+
+        return items
+            .Select(e => MapAccessible(e, summaries, withFiles))
+            .ToList();
     }
 
     private async Task EnsureUserExistsAsync(string userId, CancellationToken ct)
@@ -170,4 +182,27 @@ public class LearningResourceService : ILearningResourceService
             e.AccessInstructions,
             e.Visibility.ToString()
         );
+
+    private static AccessibleLearningResourceResponse MapAccessible(
+        LearningResource e,
+        IReadOnlyDictionary<Guid, string> summaries,
+        IReadOnlySet<Guid> withFiles)
+    {
+        summaries.TryGetValue(e.Id, out var summary);
+        return new AccessibleLearningResourceResponse(
+            e.Id,
+            e.Title,
+            e.Description,
+            e.Topic,
+            e.Difficulty,
+            e.EstimatedDurationMinutes,
+            e.ContentType.ToString(),
+            e.SourceName,
+            e.Url,
+            e.AccessType.ToString(),
+            e.AccessInstructions,
+            e.Visibility.ToString(),
+            summary,
+            withFiles.Contains(e.Id));
+    }
 }

@@ -69,6 +69,7 @@ _LABELED_FIELD_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Title", ("title",)),
     ("Topic", ("topic",)),
     ("Description", ("description", "desc")),
+    ("Summary", ("extractedTextSummary", "extracted_text_summary")),
     ("Content", ("content", "body", "text")),
     ("Type", ("contentType", "content_type")),
     ("Week", ("week", "weekInferred", "weekLabel", "week_label")),

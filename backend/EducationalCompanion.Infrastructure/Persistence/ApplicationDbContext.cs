@@ -36,6 +36,9 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
     public DbSet<StudyTask> StudyTasks => Set<StudyTask>();
     public DbSet<ScheduleSuggestion> ScheduleSuggestions => Set<ScheduleSuggestion>();
 
+    public DbSet<ResourceFile> ResourceFiles => Set<ResourceFile>();
+    public DbSet<ResourceExtractedText> ResourceExtractedTexts => Set<ResourceExtractedText>();
+
     // =========================
     // Model configuration
     // =========================

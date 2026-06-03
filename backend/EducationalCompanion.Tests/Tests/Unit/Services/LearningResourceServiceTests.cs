@@ -224,11 +224,99 @@ public class LearningResourceServiceTests
         Assert.False(repo.Resources.ContainsKey(existingId));
     }
 
-    private static LearningResourceService CreateService(FakeLearningResourceRepository repo)
+    [Fact]
+    public async Task GetAccessibleForUserAsync_IncludesExtractedTextSummaryAndHasSupplementaryFile()
+    {
+        var resourceId = Guid.NewGuid();
+        var resource = new LearningResource
+        {
+            Id = resourceId,
+            Title = "Course notes",
+            Topic = "Databases",
+            Difficulty = 2,
+            EstimatedDurationMinutes = 30,
+            ContentType = ResourceContentType.Article,
+            Description = "Intro"
+        };
+        var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource> { [resourceId] = resource });
+        var extractedRepo = new FakeResourceExtractedTextRepository(
+            new Dictionary<Guid, string> { [resourceId] = "Normalized summary for ranking." });
+        var fileRepo = new FakeResourceFileRepository(new HashSet<Guid> { resourceId });
+        var service = CreateService(repo, extractedRepo, fileRepo);
+
+        var result = await service.GetAccessibleForUserAsync("user-1", CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal("Normalized summary for ranking.", result[0].ExtractedTextSummary);
+        Assert.True(result[0].HasSupplementaryFile);
+    }
+
+    private static LearningResourceService CreateService(
+        FakeLearningResourceRepository repo,
+        FakeResourceExtractedTextRepository? extractedRepo = null,
+        FakeResourceFileRepository? fileRepo = null)
     {
         var userRepo = new FakeUserProfileRepository(profile: new UserProfile { UserId = "user-1" });
         var accessRepo = new PermissiveResourceAccessRepository(repo);
-        return new LearningResourceService(repo, accessRepo, userRepo);
+        return new LearningResourceService(
+            repo,
+            accessRepo,
+            userRepo,
+            extractedRepo ?? new FakeResourceExtractedTextRepository(),
+            fileRepo ?? new FakeResourceFileRepository());
+    }
+
+    private sealed class FakeResourceExtractedTextRepository : IResourceExtractedTextRepository
+    {
+        private readonly IReadOnlyDictionary<Guid, string> _summaries;
+
+        public FakeResourceExtractedTextRepository(IReadOnlyDictionary<Guid, string>? summaries = null) =>
+            _summaries = summaries ?? new Dictionary<Guid, string>();
+
+        public Task<ResourceExtractedText?> GetLatestByLearningResourceIdAsync(Guid learningResourceId, CancellationToken ct = default)
+        {
+            if (!_summaries.TryGetValue(learningResourceId, out var summary))
+                return Task.FromResult<ResourceExtractedText?>(null);
+            return Task.FromResult<ResourceExtractedText?>(new ResourceExtractedText
+            {
+                LearningResourceId = learningResourceId,
+                ResourceFileId = Guid.NewGuid(),
+                Summary = summary,
+                ExtractedText = summary,
+                CharacterCount = summary.Length,
+                ExtractionMethod = ResourceTextExtractionMethod.PlainText
+            });
+        }
+
+        public Task<IReadOnlyDictionary<Guid, string>> GetLatestSummariesByResourceIdsAsync(
+            IEnumerable<Guid> learningResourceIds,
+            CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, string>>(_summaries);
+
+        public Task AddAsync(ResourceExtractedText entity, CancellationToken ct = default) => Task.CompletedTask;
+        public Task RemoveByResourceFileIdAsync(Guid resourceFileId, CancellationToken ct = default) => Task.CompletedTask;
+        public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class FakeResourceFileRepository : IResourceFileRepository
+    {
+        private readonly IReadOnlySet<Guid> _withFiles;
+
+        public FakeResourceFileRepository(IReadOnlySet<Guid>? withFiles = null) =>
+            _withFiles = withFiles ?? new HashSet<Guid>();
+
+        public Task<ResourceFile?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult<ResourceFile?>(null);
+
+        public Task<IReadOnlyList<ResourceFile>> GetByLearningResourceIdAsync(Guid learningResourceId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ResourceFile>>(Array.Empty<ResourceFile>());
+
+        public Task<IReadOnlySet<Guid>> GetResourceIdsWithFilesAsync(IEnumerable<Guid> learningResourceIds, CancellationToken ct = default) =>
+            Task.FromResult(_withFiles);
+
+        public Task AddAsync(ResourceFile entity, CancellationToken ct = default) => Task.CompletedTask;
+        public void Remove(ResourceFile entity) { }
+        public Task SaveChangesAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 
     private sealed class FakeUserProfileRepository : IUserProfileRepository

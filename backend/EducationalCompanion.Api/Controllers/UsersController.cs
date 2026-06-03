@@ -101,7 +101,7 @@ public class UsersController : ControllerBase
 
     // Learning resources this user may receive in recommendations (visibility + scope membership).
     [HttpGet("{id}/resources/accessible")]
-    public async Task<ActionResult<IReadOnlyList<LearningResourceResponse>>> GetAccessibleResources(
+    public async Task<ActionResult<IReadOnlyList<AccessibleLearningResourceResponse>>> GetAccessibleResources(
         string id,
         CancellationToken ct)
     {

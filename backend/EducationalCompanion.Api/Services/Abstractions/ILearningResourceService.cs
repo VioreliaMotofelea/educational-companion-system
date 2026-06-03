@@ -10,5 +10,5 @@ public interface ILearningResourceService
     Task<LearningResourceResponse> CreateAsync(CreateLearningResourceRequest request, CancellationToken ct);
     Task UpdateAsync(Guid id, UpdateLearningResourceRequest request, CancellationToken ct);
     Task DeleteAsync(Guid id, CancellationToken ct);
-    Task<IReadOnlyList<LearningResourceResponse>> GetAccessibleForUserAsync(string userId, CancellationToken ct);
+    Task<IReadOnlyList<AccessibleLearningResourceResponse>> GetAccessibleForUserAsync(string userId, CancellationToken ct);
 }

@@ -46,3 +46,9 @@ appsettings.Development.json
 appsettings.Local.json
 .env
 .env.*
+
+########################################
+# Uploaded resource files (local storage)
+########################################
+storage/
+**/storage/resource-files/

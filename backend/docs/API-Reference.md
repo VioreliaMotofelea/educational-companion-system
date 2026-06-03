@@ -167,11 +167,33 @@ Returns learning resources the user is allowed to receive in recommendations, ba
 - `PrivateToUser` — `ownerUserId` must equal the requesting user.
 - Scoped resources **without** scope rows, or private resources **without** an owner, are **not** returned.
 
-**Response 200:** array of `LearningResourceResponse` (same shape as `GET /api/resources`).
+**Response 200:** array of `AccessibleLearningResourceResponse` (catalog fields from `LearningResourceResponse`, plus optional ingestion fields):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `extractedTextSummary` | string? | Short summary of machine-extracted text from an uploaded file (ranking enrichment only). |
+| `hasSupplementaryFile` | bool | `true` when at least one file is attached to the resource. |
 
 **Errors:** 404 if user not found.
 
-Used by the AI service as the **candidate catalog** before ranking. `GET /api/resources` remains the full catalog for admin/demo/evaluation.
+Used by the AI service as the **candidate catalog** before ranking. `GET /api/resources` remains the full catalog for admin/demo/evaluation. Full extracted text is **not** returned on this endpoint.
+
+---
+
+### Resource file ingestion (private, access-scoped)
+
+Files and extracted text **inherit** the parent resource’s visibility and scopes. Only users who can access the resource may upload, list, or read extraction metadata.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/resources/{resourceId}/files?userId={userId}` | Upload `.txt`, `.md`, `.pdf`, `.docx` (multipart field `file`). Max size: `ResourceFiles:MaxFileSizeBytes` (default 20 MB). |
+| GET | `/api/resources/{resourceId}/files?userId={userId}` | List file metadata (no disk paths). |
+| GET | `/api/resources/{resourceId}/extracted-text?userId={userId}` | Latest extraction **summary** and metadata (not full text). |
+| DELETE | `/api/resources/{resourceId}/files/{fileId}?userId={userId}` | Remove file and linked extraction rows. |
+
+**Processing:** Direct text extraction only (UTF-8 text/markdown, DOCX paragraphs, PDF selectable text). **OCR is not implemented**; scanned PDFs may return `Failed` with a message that OCR would be required in a future version.
+
+**Configuration:** `ResourceFiles:StoragePath` (default `storage/resource-files` under the API content root).
 
 ---
 
@@ -328,7 +350,7 @@ If all are omitted, returns all resources.
 ]
 ```
 
-**Access metadata:** `sourceName` and `url` describe where material comes from; `accessInstructions` explains offline or course-only access when there is no public URL. `accessType`: `NoDirectAccess`, `ExternalUrl`, `InternalPlatform`, `OfflinePhysical`, `CommunicationChannel`. `visibility`: `Global`, `CourseOnly`, `GroupOnly`, `PrivateToUser`. Recommendation ranking uses `GET /api/users/{id}/resources/accessible`, not this endpoint. OCR/file upload is not part of the API.
+**Access metadata:** `sourceName` and `url` describe where material comes from; `accessInstructions` explains offline or course-only access when there is no public URL. `accessType`: `NoDirectAccess`, `ExternalUrl`, `InternalPlatform`, `OfflinePhysical`, `CommunicationChannel`. `visibility`: `Global`, `CourseOnly`, `GroupOnly`, `PrivateToUser`. Recommendation ranking uses `GET /api/users/{id}/resources/accessible`, not this endpoint. Optional **file ingestion** is on `/api/resources/{id}/files` (see above); catalog responses here do not include extracted text.
 
 ---
 

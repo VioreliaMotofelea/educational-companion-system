@@ -20,13 +20,13 @@ To compute recommendations for a user (or for all users), the AI service typical
 |------|----------|--------|
 | User profile + preferences | `GET /api/users/{userId}` | Level, XP, daily minutes, preferred difficulty, content types, topics (CSV) |
 | User’s interactions | `GET /api/users/{userId}/interactions` | Or `GET /api/interactions?userId={userId}` or `GET /api/interactions/by-user/{userId}`. Use for history (viewed, completed, rated, time spent). |
-| **Accessible resource catalog** | `GET /api/users/{userId}/resources/accessible` | **Use this for ranking.** Only resources the learner may receive (visibility + course/group scope membership + private ownership). Same response shape as `GET /api/resources`. Do **not** rank from the full catalog. |
+| **Accessible resource catalog** | `GET /api/users/{userId}/resources/accessible` | **Use this for ranking.** Only resources the learner may receive (visibility + course/group scope membership + private ownership). Includes optional `extractedTextSummary` and `hasSupplementaryFile` when ingestion has run. Do **not** rank from the full catalog. |
 | Full resource catalog | `GET /api/resources` | Admin, demo seeding, and **evaluation metrics only** — not for per-user recommendation ranking. |
 | Optional: EDM mastery | `GET /api/users/{userId}/mastery` | Per-topic mastery and suggested difficulty; useful to bias difficulty of recommended resources. |
 
 **Privacy:** If the accessible list is empty, return no recommendations (push an empty batch with `replaceExisting: true`). Do **not** fall back to `GET /api/resources`.
 
-**Ranking inputs:** Use title, topic, description, difficulty, content type, interactions, mastery, etc. Do **not** use `url`, `sourceName`, or `accessInstructions` as ranking features.
+**Ranking inputs:** Use title, topic, description, optional `extractedTextSummary` (from private file ingestion), difficulty, content type, interactions, mastery, etc. Do **not** use `url`, `sourceName`, or `accessInstructions` as ranking features. Do **not** rank by `hasSupplementaryFile` alone.
 
 **Getting user ids:** The backend does **not** currently expose `GET /api/users` (list all users). If your AI runs in batch over all users, you must either (a) get the list of user ids from your own config/DB, or (b) ask the backend team to add `GET /api/users` returning minimal user list (e.g. ids). For a single-user flow (e.g. on-demand recommendation), the frontend or gateway provides the `userId`.
 

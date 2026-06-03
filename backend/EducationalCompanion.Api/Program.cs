@@ -84,6 +84,7 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.Configure<AiServiceOptions>(builder.Configuration.GetSection(AiServiceOptions.SectionName));
 builder.Services.Configure<CalendarOptions>(builder.Configuration.GetSection(CalendarOptions.SectionName));
+builder.Services.Configure<ResourceFilesOptions>(builder.Configuration.GetSection(ResourceFilesOptions.SectionName));
 builder.Services.AddHttpClient();
 
 // Repositories
@@ -94,9 +95,14 @@ builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
 builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
 builder.Services.AddScoped<IUserEdmReadRepository, UserEdmReadRepository>();
+builder.Services.AddScoped<IResourceFileRepository, ResourceFileRepository>();
+builder.Services.AddScoped<IResourceExtractedTextRepository, ResourceExtractedTextRepository>();
 
 // Services
 builder.Services.AddScoped<ILearningResourceService, LearningResourceService>();
+builder.Services.AddScoped<IResourceFileStorageService, LocalResourceFileStorageService>();
+builder.Services.AddScoped<IResourceTextExtractionService, ResourceTextExtractionService>();
+builder.Services.AddScoped<IResourceFileService, ResourceFileService>();
 builder.Services.AddScoped<IUserInteractionService, UserInteractionService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IUserEdmService, UserEdmService>();
