@@ -16,12 +16,26 @@ type Props = {
   description?: string | null;
   topic?: string;
   contentType?: "Article" | "Video" | "Quiz";
+  sourceName?: string | null;
+  url?: string | null;
+  accessType?: string;
+  accessInstructions?: string | null;
   resourceId: string;
   userId: string;
   difficulty: number;
   durationMinutes: number;
   score: number;
 };
+
+function isOpenableHttpUrl(url: string | null | undefined): url is string {
+  if (!url?.trim()) return false;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 function difficultyLabel(difficulty: number) {
   if (difficulty <= 1) return "Easy";
@@ -79,6 +93,9 @@ export default function RecommendationCard({
   description,
   topic,
   contentType,
+  sourceName,
+  url,
+  accessInstructions,
   resourceId,
   userId,
   difficulty,
@@ -110,6 +127,9 @@ export default function RecommendationCard({
   const subtitle = [topicLine, contentType].filter(Boolean).join(" · ");
   const matchStrength = matchStrengthForLearner(score);
   const compactDescription = description ? shortenText(description, 140) : null;
+  const openUrl = isOpenableHttpUrl(url) ? url.trim() : null;
+  const trimmedInstructions = accessInstructions?.trim() || null;
+  const trimmedSource = sourceName?.trim() || null;
 
   const notifyInteractionUpdated = () => {
     window.dispatchEvent(new CustomEvent("interaction-updated"));
@@ -339,6 +359,31 @@ export default function RecommendationCard({
       {compactDescription ? (
         <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 12, opacity: 0.85 }}>{compactDescription}</p>
       ) : null}
+      {trimmedSource ? (
+        <p style={{ margin: "8px 0 0 0", color: "var(--muted)", fontSize: 13 }}>
+          <span style={{ color: "var(--text)", fontWeight: 600 }}>Source:</span> {trimmedSource}
+        </p>
+      ) : null}
+      {openUrl ? (
+        <p style={{ margin: "8px 0 0 0" }}>
+          <a
+            href={openUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--color-ai-400)", fontWeight: 600, fontSize: 13 }}
+          >
+            Open resource
+          </a>
+        </p>
+      ) : trimmedInstructions ? (
+        <p style={{ margin: "8px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>
+          <span style={{ color: "var(--text)", fontWeight: 600 }}>Where to find it:</span> {trimmedInstructions}
+        </p>
+      ) : (
+        <p style={{ margin: "8px 0 0 0", color: "var(--muted)", fontSize: 12 }}>
+          No direct access link is available for this resource.
+        </p>
+      )}
       {error ? <p style={{ color: "rgba(239, 68, 68, 0.95)", margin: "10px 0 0 0" }}>{error}</p> : null}
       {ok ? <p style={{ color: "rgba(34, 197, 94, 0.95)", margin: "10px 0 0 0" }}>{ok}</p> : null}
       {startBlockedByActiveSession ? (

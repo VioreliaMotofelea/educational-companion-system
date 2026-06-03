@@ -83,6 +83,10 @@ export default function RecommendationsPage() {
               description={rec.resource.description}
               topic={rec.resource.topic}
               contentType={rec.resource.contentType}
+              sourceName={rec.resource.sourceName}
+              url={rec.resource.url}
+              accessType={rec.resource.accessType}
+              accessInstructions={rec.resource.accessInstructions}
               resourceId={rec.resource.id}
               userId={userId}
               difficulty={rec.resource.difficulty}

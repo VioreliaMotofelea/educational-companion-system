@@ -48,6 +48,11 @@ export type LearningResource = {
   difficulty: number;
   estimatedDurationMinutes: number;
   contentType: "Article" | "Video" | "Quiz";
+  sourceName?: string | null;
+  url?: string | null;
+  accessType?: string;
+  accessInstructions?: string | null;
+  visibility?: string;
 };
 
 let refreshInFlight: Promise<boolean> | null = null;
