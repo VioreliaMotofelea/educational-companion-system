@@ -8,6 +8,7 @@ from clients.backend_client import (
     get_user,
     get_user_interactions,
     get_all_interactions,
+    get_accessible_resources,
     get_resources,
     get_user_mastery,
     push_recommendations,
@@ -51,7 +52,16 @@ def generate_recommendations(
     user = get_user(user_id)
     interactions = get_user_interactions(user_id)
     all_users_interactions = get_all_interactions()
-    resources = get_resources()
+    resources = get_accessible_resources(user_id)
+    if not resources:
+        logger.info("No accessible resources for user_id=%s; returning empty recommendations", user_id)
+        result = push_recommendations(user_id, [])
+        return RecommendationGenerationResponse(
+            userId=user_id,
+            generated=0,
+            variant=variant,
+            backendResponse=result,
+        )
 
     try:
         mastery = get_user_mastery(user_id)

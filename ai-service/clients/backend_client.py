@@ -119,8 +119,18 @@ def get_all_interactions() -> list:
     return r.json()
 
 
+def get_accessible_resources(user_id: str) -> list:
+    """Get learning resources the user may receive in recommendations (visibility + scopes)."""
+    r = _backend_call(
+        "GET",
+        f"{BACKEND_BASE_URL}/api/users/{user_id}/resources/accessible",
+        timeout=BACKEND_BULK_GET_TIMEOUT_S,
+    )
+    return r.json()
+
+
 def get_resources() -> list:
-    """Get full learning resource catalog."""
+    """Get full learning resource catalog (admin/evaluation only — not for user recommendation ranking)."""
     global _resources_cache
     if not BACKEND_DISABLE_DATA_CACHE and _resources_cache is not None:
         return _resources_cache
