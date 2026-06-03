@@ -9,6 +9,7 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Tests.Tests.Unit.Fakes;
 using Xunit;
 
 namespace EducationalCompanion.Tests.Tests.Unit.Services;
@@ -19,7 +20,7 @@ public class LearningResourceServiceTests
     public async Task GetByIdAsync_ThrowsWhenNotFound()
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         await Assert.ThrowsAsync<LearningResourceNotFoundException>(() => service.GetByIdAsync(Guid.NewGuid(), CancellationToken.None));
     }
@@ -28,7 +29,7 @@ public class LearningResourceServiceTests
     public async Task CreateAsync_ParsesContentTypeAndValidatesRanges()
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         var request = new CreateLearningResourceRequest(
             Title: "Title",
@@ -47,6 +48,8 @@ public class LearningResourceServiceTests
         Assert.Equal(3, result.Difficulty);
         Assert.Equal(60, result.EstimatedDurationMinutes);
         Assert.Equal(ResourceContentType.Article.ToString(), result.ContentType);
+        Assert.Equal(ResourceAccessType.NoDirectAccess.ToString(), result.AccessType);
+        Assert.Equal(ResourceVisibility.Global.ToString(), result.Visibility);
 
         Assert.Equal(1, repo.AddCalls);
         Assert.Equal(1, repo.SaveCalls);
@@ -58,7 +61,7 @@ public class LearningResourceServiceTests
     public async Task CreateAsync_ThrowsWhenEstimatedDurationInvalid(int minutes)
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         var request = new CreateLearningResourceRequest(
             Title: "Title",
@@ -77,7 +80,7 @@ public class LearningResourceServiceTests
     public async Task CreateAsync_ThrowsWhenDifficultyInvalid(int difficulty)
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         var request = new CreateLearningResourceRequest(
             Title: "Title",
@@ -91,10 +94,51 @@ public class LearningResourceServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_WithUrl_DefaultsAccessTypeToExternalUrl()
+    {
+        var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
+        var service = CreateService(repo);
+
+        var request = new CreateLearningResourceRequest(
+            Title: "Title",
+            Description: "Desc",
+            Topic: "Python",
+            Difficulty: 3,
+            EstimatedDurationMinutes: 60,
+            ContentType: "Article",
+            SourceName: "MIT OCW",
+            Url: "https://ocw.mit.edu/");
+
+        var result = await service.CreateAsync(request, CancellationToken.None);
+
+        Assert.Equal("MIT OCW", result.SourceName);
+        Assert.Equal("https://ocw.mit.edu/", result.Url);
+        Assert.Equal(ResourceAccessType.ExternalUrl.ToString(), result.AccessType);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ThrowsWhenUrlIsUnsafe()
+    {
+        var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
+        var service = CreateService(repo);
+
+        var request = new CreateLearningResourceRequest(
+            Title: "Title",
+            Description: null,
+            Topic: "Python",
+            Difficulty: 3,
+            EstimatedDurationMinutes: 60,
+            ContentType: "Article",
+            Url: "file:///etc/passwd");
+
+        await Assert.ThrowsAsync<ValidationException>(() => service.CreateAsync(request, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task CreateAsync_ThrowsWhenContentTypeInvalid()
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         var request = new CreateLearningResourceRequest(
             Title: "Title",
@@ -123,7 +167,7 @@ public class LearningResourceServiceTests
         };
 
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource> { [existingId] = existing });
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         var request = new UpdateLearningResourceRequest(
             Title: "NewTitle",
@@ -151,7 +195,7 @@ public class LearningResourceServiceTests
     public async Task DeleteAsync_ThrowsWhenNotFound()
     {
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         await Assert.ThrowsAsync<LearningResourceNotFoundException>(() => service.DeleteAsync(Guid.NewGuid(), CancellationToken.None));
     }
@@ -171,13 +215,39 @@ public class LearningResourceServiceTests
         };
 
         var repo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource> { [existingId] = existing });
-        var service = new LearningResourceService(repo);
+        var service = CreateService(repo);
 
         await service.DeleteAsync(existingId, CancellationToken.None);
 
         Assert.Equal(1, repo.RemoveCalls);
         Assert.Equal(1, repo.SaveCalls);
         Assert.False(repo.Resources.ContainsKey(existingId));
+    }
+
+    private static LearningResourceService CreateService(FakeLearningResourceRepository repo)
+    {
+        var userRepo = new FakeUserProfileRepository(profile: new UserProfile { UserId = "user-1" });
+        var accessRepo = new PermissiveResourceAccessRepository(repo);
+        return new LearningResourceService(repo, accessRepo, userRepo);
+    }
+
+    private sealed class FakeUserProfileRepository : IUserProfileRepository
+    {
+        private readonly UserProfile? _profile;
+        public FakeUserProfileRepository(UserProfile? profile) => _profile = profile;
+        public Task<UserProfile?> GetByUserIdAsync(string userId, CancellationToken ct = default) =>
+            Task.FromResult(_profile);
+        public Task<UserProfile?> GetByUserIdWithPreferencesAsync(string userId, CancellationToken ct = default) =>
+            Task.FromResult(_profile);
+        public Task<UserProfile?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult<UserProfile?>(null);
+        public Task<IReadOnlyList<UserProfile>> GetAllAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<UserProfile>>(Array.Empty<UserProfile>());
+        public Task AddAsync(UserProfile entity, CancellationToken ct = default) => Task.CompletedTask;
+        public void Update(UserProfile entity) { }
+        public void Remove(UserProfile entity) { }
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public IQueryable<UserProfile> Query() => Array.Empty<UserProfile>().AsQueryable();
     }
 
     private sealed class FakeLearningResourceRepository : ILearningResourceRepository

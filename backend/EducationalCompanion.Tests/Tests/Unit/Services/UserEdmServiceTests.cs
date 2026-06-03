@@ -12,6 +12,7 @@ using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Edm;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Tests.Tests.Unit.Fakes;
 using Xunit;
 
 namespace EducationalCompanion.Tests.Tests.Unit.Services;
@@ -26,7 +27,7 @@ public class UserEdmServiceTests
             0, 0, 0, null, 0, 0, 1, 0, 0, 0, 0), topicMastery: new List<TopicMasteryData>());
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new UserEdmService(userRepo, recRepo, edmRepo);
+        var service = CreateService(userRepo, recRepo, edmRepo);
 
         await Assert.ThrowsAsync<UserProfileNotFoundException>(() => service.GetAnalyticsAsync("missing-user", CancellationToken.None));
     }
@@ -52,7 +53,7 @@ public class UserEdmServiceTests
             topicMastery: new List<TopicMasteryData>());
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new UserEdmService(userRepo, recRepo, edmRepo);
+        var service = CreateService(userRepo, recRepo, edmRepo);
         var result = await service.GetAnalyticsAsync("user-1", CancellationToken.None);
 
         Assert.Equal("user-1", result.UserId);
@@ -104,7 +105,7 @@ public class UserEdmServiceTests
         var recRepo = new FakeRecommendationRepository(new List<Recommendation> { withResource, withoutResource });
         var edmRepo = new FakeUserEdmReadRepository(kpis: null, topicMastery: new List<TopicMasteryData>());
 
-        var service = new UserEdmService(userRepo, recRepo, edmRepo);
+        var service = CreateService(userRepo, recRepo, edmRepo, [learningResource]);
         var result = await service.GetRecommendationsAsync("user-1", limit: null, CancellationToken.None);
 
         Assert.Single(result);
@@ -134,7 +135,7 @@ public class UserEdmServiceTests
         var edmRepo = new FakeUserEdmReadRepository(kpis: null, topicMastery: topicData);
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new UserEdmService(userRepo, recRepo, edmRepo);
+        var service = CreateService(userRepo, recRepo, edmRepo);
         var result = await service.GetMasteryAsync("user-1", CancellationToken.None);
 
         Assert.Equal("user-1", result.UserId);
@@ -157,6 +158,105 @@ public class UserEdmServiceTests
             "Based on 4 topic(s); average completed difficulty 2.5, rating 4.1. Suggested next: 4.",
             result.SuggestedDifficultyReason);
         Assert.NotEqual(default, result.ComputedAtUtc);
+    }
+
+    [Fact]
+    public async Task GetRecommendationsAsync_ExcludesInaccessibleResources()
+    {
+        var globalId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var courseOnlyId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+        var catalog = new Dictionary<Guid, LearningResource>
+        {
+            [globalId] = new LearningResource
+            {
+                Id = globalId,
+                Title = "Global",
+                Topic = "DB",
+                Difficulty = 1,
+                EstimatedDurationMinutes = 10,
+                ContentType = ResourceContentType.Article,
+                Visibility = ResourceVisibility.Global
+            },
+            [courseOnlyId] = new LearningResource
+            {
+                Id = courseOnlyId,
+                Title = "Course only",
+                Topic = "DB",
+                Difficulty = 2,
+                EstimatedDurationMinutes = 15,
+                ContentType = ResourceContentType.Article,
+                Visibility = ResourceVisibility.CourseOnly
+            }
+        };
+
+        var userProfile = new UserProfile { UserId = "demo-bianca", Level = 1, Xp = 0, DailyAvailableMinutes = 60 };
+        var userRepo = new FakeUserProfileRepository(profile: userProfile);
+        var edmRepo = new FakeUserEdmReadRepository(kpis: null, topicMastery: new List<TopicMasteryData>());
+        var recRepo = new FakeRecommendationRepository(new List<Recommendation>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = "demo-bianca",
+                LearningResourceId = globalId,
+                Score = 0.9,
+                AlgorithmUsed = "Hybrid",
+                Explanation = "ok",
+                LearningResource = catalog[globalId]
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = "demo-bianca",
+                LearningResourceId = courseOnlyId,
+                Score = 0.8,
+                AlgorithmUsed = "Hybrid",
+                Explanation = "hidden",
+                LearningResource = catalog[courseOnlyId]
+            }
+        });
+
+        var learningRepo = new FakeLearningResourceRepository(catalog);
+        var accessRepo = new FakeResourceAccessRepository(learningRepo, new[] { globalId });
+        var service = new UserEdmService(userRepo, recRepo, edmRepo, accessRepo);
+
+        var result = await service.GetRecommendationsAsync("demo-bianca", limit: null, CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal(globalId, result[0].Resource.Id);
+    }
+
+    private static UserEdmService CreateService(
+        FakeUserProfileRepository userRepo,
+        FakeRecommendationRepository recRepo,
+        FakeUserEdmReadRepository edmRepo,
+        IEnumerable<LearningResource>? catalog = null)
+    {
+        var resources = catalog?.ToDictionary(r => r.Id) ?? new Dictionary<Guid, LearningResource>();
+        var learningRepo = new FakeLearningResourceRepository(resources);
+        var accessRepo = new PermissiveResourceAccessRepository(learningRepo);
+        return new UserEdmService(userRepo, recRepo, edmRepo, accessRepo);
+    }
+
+    private sealed class FakeLearningResourceRepository : ILearningResourceRepository
+    {
+        private readonly Dictionary<Guid, LearningResource> _resources;
+        public FakeLearningResourceRepository(Dictionary<Guid, LearningResource> resources) => _resources = resources;
+        public Task<IReadOnlyList<LearningResource>> SearchAsync(string? topic, int? difficulty, string? contentType, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<LearningResource>>(_resources.Values.ToList());
+        public Task<LearningResource?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        {
+            _resources.TryGetValue(id, out var value);
+            return Task.FromResult(value);
+        }
+        public Task<IReadOnlyList<LearningResource>> GetAllAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<LearningResource>>(_resources.Values.ToList());
+        public IQueryable<LearningResource> Query() => _resources.Values.AsQueryable();
+        public Task AddAsync(LearningResource entity, CancellationToken ct = default) { _resources[entity.Id] = entity; return Task.CompletedTask; }
+        public void Update(LearningResource entity) => _resources[entity.Id] = entity;
+        public void Remove(LearningResource entity) => _resources.Remove(entity.Id);
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
     private sealed class FakeUserProfileRepository : IUserProfileRepository
