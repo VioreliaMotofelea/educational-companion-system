@@ -4,6 +4,7 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 
 namespace EducationalCompanion.Api.Services.Implementations;
 
@@ -15,23 +16,30 @@ public class RecommendationService : IRecommendationService
     private const int MaxExplanationLength = 1000;
     private const double AutoTaskMinScore = 0.65;
     private const int AutoTaskFallbackCount = 2;
+    private const int MaxDiscardedIdsLoggedAtInformation = 10;
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> UserRecommendationLocks = new();
 
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
     private readonly IRecommendationRepository _recommendationRepo;
     private readonly IStudyTaskService _studyTaskService;
+    private readonly IResourceAccessRepository _accessRepo;
+    private readonly ILogger<RecommendationService> _logger;
 
     public RecommendationService(
         IUserProfileRepository userProfileRepo,
         ILearningResourceRepository learningResourceRepo,
         IRecommendationRepository recommendationRepo,
-        IStudyTaskService studyTaskService)
+        IStudyTaskService studyTaskService,
+        IResourceAccessRepository accessRepo,
+        ILogger<RecommendationService> logger)
     {
         _userProfileRepo = userProfileRepo;
         _learningResourceRepo = learningResourceRepo;
         _recommendationRepo = recommendationRepo;
         _studyTaskService = studyTaskService;
+        _accessRepo = accessRepo;
+        _logger = logger;
     }
 
     public async Task<CreatedRecommendationsResponse> CreateBatchForUserAsync(
@@ -43,15 +51,46 @@ public class RecommendationService : IRecommendationService
         await userLock.WaitAsync(ct);
         try
         {
-            if (request.Recommendations is null || request.Recommendations.Count == 0)
-                throw new ValidationException("At least one recommendation is required.");
+            if (request.Recommendations is null)
+                throw new ValidationException("Recommendations array is required.");
 
             await EnsureUserExistsAsync(userId, ct);
 
-            foreach (var item in request.Recommendations)
+            if (request.Recommendations.Count == 0)
             {
-                ValidateItem(item);
-                await EnsureLearningResourceExistsAsync(item.LearningResourceId, ct);
+                if (!request.ReplaceExisting)
+                    throw new ValidationException("At least one recommendation is required.");
+
+                await _recommendationRepo.DeleteByUserIdAsync(userId, ct);
+                await _recommendationRepo.SaveChangesAsync(ct);
+                return new CreatedRecommendationsResponse(userId, 0, ReplacedExisting: true);
+            }
+
+            var normalizedItems = new List<NormalizedRecommendationItem>(request.Recommendations.Count);
+            foreach (var item in request.Recommendations)
+                normalizedItems.Add(ValidateAndNormalizeItem(item));
+
+            foreach (var resourceId in normalizedItems.Select(i => i.LearningResourceId).Distinct())
+                await EnsureLearningResourceExistsAsync(resourceId, ct);
+
+            var accessibleIds = (await _accessRepo.GetAccessibleResourcesForUserAsync(userId, ct))
+                .Select(r => r.Id)
+                .ToHashSet();
+
+            var accessibleRecommendations = normalizedItems
+                .Where(item => accessibleIds.Contains(item.LearningResourceId))
+                .ToList();
+
+            LogDiscardedInaccessibleItems(userId, request, normalizedItems, accessibleRecommendations);
+
+            if (accessibleRecommendations.Count == 0)
+            {
+                if (!request.ReplaceExisting)
+                    throw new ValidationException("No accessible resources in recommendation batch.");
+
+                await _recommendationRepo.DeleteByUserIdAsync(userId, ct);
+                await _recommendationRepo.SaveChangesAsync(ct);
+                return new CreatedRecommendationsResponse(userId, 0, ReplacedExisting: true);
             }
 
             var replaced = false;
@@ -61,7 +100,7 @@ public class RecommendationService : IRecommendationService
                 replaced = true;
             }
 
-            var dedupedRecommendations = request.Recommendations
+            var dedupedRecommendations = accessibleRecommendations
                 .OrderByDescending(item => item.Score)
                 .DistinctBy(item => item.LearningResourceId)
                 .ToList();
@@ -72,8 +111,8 @@ public class RecommendationService : IRecommendationService
                     UserId = userId,
                     LearningResourceId = item.LearningResourceId,
                     Score = item.Score,
-                    AlgorithmUsed = item.AlgorithmUsed.Trim(),
-                    Explanation = item.Explanation.Trim()
+                    AlgorithmUsed = item.AlgorithmUsed,
+                    Explanation = item.Explanation
                 })
                 .ToList();
 
@@ -101,12 +140,62 @@ public class RecommendationService : IRecommendationService
                 taskCandidateIds,
                 ct);
 
-            return new CreatedRecommendationsResponse(userId, entities.Count, replaced);
+            return new CreatedRecommendationsResponse(userId, entities.Count, ReplacedExisting: replaced);
         }
         finally
         {
             userLock.Release();
         }
+    }
+
+    private void LogDiscardedInaccessibleItems(
+        string userId,
+        CreateRecommendationsBatchRequest request,
+        IReadOnlyList<NormalizedRecommendationItem> normalizedItems,
+        List<NormalizedRecommendationItem> accessibleRecommendations)
+    {
+        var accessibleIdSet = accessibleRecommendations
+            .Select(item => item.LearningResourceId)
+            .ToHashSet();
+
+        var discardedResourceIds = normalizedItems
+            .Where(item => !accessibleIdSet.Contains(item.LearningResourceId))
+            .Select(item => item.LearningResourceId)
+            .ToList();
+
+        if (discardedResourceIds.Count == 0)
+            return;
+
+        _logger.LogInformation(
+            "Recommendation batch for user {UserId}: discarded {DiscardedCount} inaccessible item(s); "
+            + "persisting {PersistedCount} of {RequestedCount}. ReplaceExisting={ReplaceExisting}.",
+            userId,
+            discardedResourceIds.Count,
+            accessibleRecommendations.Count,
+            normalizedItems.Count,
+            request.ReplaceExisting);
+
+        if (discardedResourceIds.Count <= MaxDiscardedIdsLoggedAtInformation)
+        {
+            _logger.LogDebug(
+                "Discarded learning resource ids for user {UserId}: {DiscardedResourceIds}",
+                userId,
+                discardedResourceIds);
+            return;
+        }
+
+        var sampleIds = discardedResourceIds.Take(MaxDiscardedIdsLoggedAtInformation).ToList();
+        _logger.LogInformation(
+            "Discarded learning resource ids for user {UserId} (first {SampleCount} of {TotalCount}, truncated): {DiscardedResourceIds}",
+            userId,
+            sampleIds.Count,
+            discardedResourceIds.Count,
+            sampleIds);
+
+        _logger.LogDebug(
+            "Full discarded learning resource id list for user {UserId}: {DiscardedResourceIds}",
+            userId,
+            discardedResourceIds);
     }
 
     private async Task EnsureUserExistsAsync(string userId, CancellationToken ct)
@@ -123,19 +212,38 @@ public class RecommendationService : IRecommendationService
             throw new LearningResourceNotFoundException(learningResourceId);
     }
 
-    private static void ValidateItem(CreateRecommendationItemRequest item)
+    private static NormalizedRecommendationItem ValidateAndNormalizeItem(CreateRecommendationItemRequest item)
     {
+        if (item is null)
+            throw new ValidationException("Recommendation item cannot be null.");
+
         if (item.Score < MinScore || item.Score > MaxScore)
             throw new ValidationException($"Score must be between {MinScore} and {MaxScore}.");
 
         if (string.IsNullOrWhiteSpace(item.AlgorithmUsed))
             throw new ValidationException("AlgorithmUsed is required.");
-        if (item.AlgorithmUsed.Length > MaxAlgorithmUsedLength)
+
+        var algorithmUsed = item.AlgorithmUsed.Trim();
+        if (algorithmUsed.Length > MaxAlgorithmUsedLength)
             throw new ValidationException($"AlgorithmUsed must be at most {MaxAlgorithmUsedLength} characters.");
 
         if (string.IsNullOrWhiteSpace(item.Explanation))
             throw new ValidationException("Explanation is required.");
-        if (item.Explanation.Length > MaxExplanationLength)
+
+        var explanation = item.Explanation.Trim();
+        if (explanation.Length > MaxExplanationLength)
             throw new ValidationException($"Explanation must be at most {MaxExplanationLength} characters.");
+
+        return new NormalizedRecommendationItem(
+            item.LearningResourceId,
+            item.Score,
+            algorithmUsed,
+            explanation);
     }
+
+    private sealed record NormalizedRecommendationItem(
+        Guid LearningResourceId,
+        double Score,
+        string AlgorithmUsed,
+        string Explanation);
 }

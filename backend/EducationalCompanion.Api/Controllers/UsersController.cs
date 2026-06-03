@@ -1,4 +1,5 @@
 using EducationalCompanion.Api.Dtos.Analytics;
+using EducationalCompanion.Api.Dtos.LearningResources;
 using EducationalCompanion.Api.Dtos.Mastery;
 using EducationalCompanion.Api.Dtos.Recommendations;
 using EducationalCompanion.Api.Dtos.Tasks;
@@ -22,6 +23,7 @@ public class UsersController : ControllerBase
     private readonly IRecommendationService _recommendationService;
     private readonly IAiGenerationService _aiGenerationService;
     private readonly IStudyTaskService _studyTaskService;
+    private readonly ILearningResourceService _learningResourceService;
 
     public UsersController(
         IUserInteractionService interactionService,
@@ -29,7 +31,8 @@ public class UsersController : ControllerBase
         IUserEdmService edmService,
         IRecommendationService recommendationService,
         IAiGenerationService aiGenerationService,
-        IStudyTaskService studyTaskService)
+        IStudyTaskService studyTaskService,
+        ILearningResourceService learningResourceService)
     {
         _interactionService = interactionService;
         _userProfileService = userProfileService;
@@ -37,6 +40,7 @@ public class UsersController : ControllerBase
         _recommendationService = recommendationService;
         _aiGenerationService = aiGenerationService;
         _studyTaskService = studyTaskService;
+        _learningResourceService = learningResourceService;
     }
 
     // Get full profile including preferences (for dashboard, AI aggregation)
@@ -93,6 +97,17 @@ public class UsersController : ControllerBase
         EnsureCallerMatchesUserId(id);
         var result = await _edmService.GetAnalyticsAsync(id, ct);
         return Ok(result);
+    }
+
+    // Learning resources this user may receive in recommendations (visibility + scope membership).
+    [HttpGet("{id}/resources/accessible")]
+    public async Task<ActionResult<IReadOnlyList<LearningResourceResponse>>> GetAccessibleResources(
+        string id,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        var list = await _learningResourceService.GetAccessibleForUserAsync(id, ct);
+        return Ok(list);
     }
 
     // Personalized content recommendations for the user (read).

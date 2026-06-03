@@ -19,15 +19,18 @@ public class UserEdmService : IUserEdmService
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly IRecommendationRepository _recommendationRepo;
     private readonly IUserEdmReadRepository _edmReadRepo;
+    private readonly IResourceAccessRepository _accessRepo;
 
     public UserEdmService(
         IUserProfileRepository userProfileRepo,
         IRecommendationRepository recommendationRepo,
-        IUserEdmReadRepository edmReadRepo)
+        IUserEdmReadRepository edmReadRepo,
+        IResourceAccessRepository accessRepo)
     {
         _userProfileRepo = userProfileRepo;
         _recommendationRepo = recommendationRepo;
         _edmReadRepo = edmReadRepo;
+        _accessRepo = accessRepo;
     }
 
     public async Task<UserAnalyticsResponse> GetAnalyticsAsync(string userId, CancellationToken ct = default)
@@ -62,8 +65,12 @@ public class UserEdmService : IUserEdmService
         await EnsureUserExistsAsync(userId, ct);
 
         var recommendations = await _recommendationRepo.GetByUserIdWithResourceAsync(userId, limit, ct);
+        var accessibleIds = (await _accessRepo.GetAccessibleResourcesForUserAsync(userId, ct))
+            .Select(r => r.Id)
+            .ToHashSet();
+
         return recommendations
-            .Where(r => r.LearningResource != null)
+            .Where(r => r.LearningResource != null && accessibleIds.Contains(r.LearningResourceId))
             .Select(r => MapToRecommendationItem(r))
             .ToList();
     }
@@ -119,15 +126,7 @@ public class UserEdmService : IUserEdmService
         var res = r.LearningResource!;
         return new UserRecommendationItemResponse(
             r.Id,
-            new LearningResourceResponse(
-                res.Id,
-                res.Title,
-                res.Description,
-                res.Topic,
-                res.Difficulty,
-                res.EstimatedDurationMinutes,
-                res.ContentType.ToString()
-            ),
+            LearningResourceService.Map(res),
             r.Score,
             r.AlgorithmUsed,
             r.Explanation,

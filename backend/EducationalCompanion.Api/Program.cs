@@ -88,6 +88,7 @@ builder.Services.AddHttpClient();
 
 // Repositories
 builder.Services.AddScoped<ILearningResourceRepository, LearningResourceRepository>();
+builder.Services.AddScoped<IResourceAccessRepository, ResourceAccessRepository>();
 builder.Services.AddScoped<IUserInteractionRepository, UserInteractionRepository>();
 builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
