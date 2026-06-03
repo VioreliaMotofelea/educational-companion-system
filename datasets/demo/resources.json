@@ -1098,5 +1098,43 @@
     "contentType": "Article",
     "source": "OpenStax",
     "url": "https://openstax.org/"
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000065",
+    "title": "SQL Joins Seminar Worksheet",
+    "description": "Printed exercises on INNER JOIN, LEFT JOIN, and GROUP BY for Seminar 4.",
+    "topic": "Databases",
+    "difficulty": 2,
+    "estimatedDurationMinutes": 45,
+    "contentType": "Article",
+    "sourceName": "Course materials",
+    "accessType": "OfflinePhysical",
+    "accessInstructions": "Printed worksheet distributed in Seminar 4; ask the instructor if you need a spare copy.",
+    "visibility": "CourseOnly",
+    "accessScopes": [
+      {
+        "scopeType": "Course",
+        "scopeKey": "databases-demo-course"
+      }
+    ]
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000066",
+    "title": "Week 3 Reading — Normalization",
+    "description": "Course reading on functional dependencies and normal forms (metadata only; no public link).",
+    "topic": "Databases",
+    "difficulty": 3,
+    "estimatedDurationMinutes": 35,
+    "contentType": "Article",
+    "sourceName": "Moodle",
+    "accessType": "CommunicationChannel",
+    "accessInstructions": "Available in the course Moodle space under Week 3 readings.",
+    "visibility": "CourseOnly",
+    "accessScopes": [
+      {
+        "scopeType": "Course",
+        "scopeKey": "databases-demo-course"
+      }
+    ]
   }
 ]
