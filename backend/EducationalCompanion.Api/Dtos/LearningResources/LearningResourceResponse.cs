@@ -7,5 +7,10 @@ public record LearningResourceResponse(
     string Topic,
     int Difficulty,
     int EstimatedDurationMinutes,
-    string ContentType
+    string ContentType,
+    string? SourceName,
+    string? Url,
+    string AccessType,
+    string? AccessInstructions,
+    string Visibility
 );

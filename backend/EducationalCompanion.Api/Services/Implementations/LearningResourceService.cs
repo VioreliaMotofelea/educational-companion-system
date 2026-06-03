@@ -1,4 +1,5 @@
 using EducationalCompanion.Api.Dtos.LearningResources;
+using EducationalCompanion.Api.Services;
 using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Enums;
@@ -13,10 +14,17 @@ public class LearningResourceService : ILearningResourceService
     private const int MaxDifficulty = 5;
 
     private readonly ILearningResourceRepository _repo;
+    private readonly IResourceAccessRepository _accessRepo;
+    private readonly IUserProfileRepository _userProfileRepo;
 
-    public LearningResourceService(ILearningResourceRepository repo)
+    public LearningResourceService(
+        ILearningResourceRepository repo,
+        IResourceAccessRepository accessRepo,
+        IUserProfileRepository userProfileRepo)
     {
         _repo = repo;
+        _accessRepo = accessRepo;
+        _userProfileRepo = userProfileRepo;
     }
 
     public async Task<IReadOnlyList<LearningResourceResponse>> GetAllAsync(CancellationToken ct)
@@ -44,15 +52,26 @@ public class LearningResourceService : ILearningResourceService
         var contentType = ParseContentType(request.ContentType);
         ValidateDifficulty(request.Difficulty);
         ValidateEstimatedDuration(request.EstimatedDurationMinutes);
+        var access = LearningResourceAccessNormalizer.Normalize(
+            request.SourceName,
+            request.Url,
+            request.AccessType,
+            request.AccessInstructions,
+            request.Visibility);
 
         var entity = new LearningResource
         {
-            Title = request.Title,
+            Title = request.Title.Trim(),
             Description = request.Description,
-            Topic = request.Topic,
+            Topic = request.Topic.Trim(),
             Difficulty = request.Difficulty,
             EstimatedDurationMinutes = request.EstimatedDurationMinutes,
-            ContentType = contentType
+            ContentType = contentType,
+            SourceName = access.SourceName,
+            Url = access.Url,
+            AccessType = access.AccessType,
+            AccessInstructions = access.AccessInstructions,
+            Visibility = access.Visibility
         };
 
         await _repo.AddAsync(entity, ct);
@@ -70,13 +89,24 @@ public class LearningResourceService : ILearningResourceService
         var contentType = ParseContentType(request.ContentType);
         ValidateDifficulty(request.Difficulty);
         ValidateEstimatedDuration(request.EstimatedDurationMinutes);
+        var access = LearningResourceAccessNormalizer.Normalize(
+            request.SourceName,
+            request.Url,
+            request.AccessType,
+            request.AccessInstructions,
+            request.Visibility);
 
-        existing.Title = request.Title;
+        existing.Title = request.Title.Trim();
         existing.Description = request.Description;
-        existing.Topic = request.Topic;
+        existing.Topic = request.Topic.Trim();
         existing.Difficulty = request.Difficulty;
         existing.EstimatedDurationMinutes = request.EstimatedDurationMinutes;
         existing.ContentType = contentType;
+        existing.SourceName = access.SourceName;
+        existing.Url = access.Url;
+        existing.AccessType = access.AccessType;
+        existing.AccessInstructions = access.AccessInstructions;
+        existing.Visibility = access.Visibility;
 
         _repo.Update(existing);
         await _repo.SaveChangesAsync(ct);
@@ -90,6 +120,20 @@ public class LearningResourceService : ILearningResourceService
 
         _repo.Remove(existing);
         await _repo.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<LearningResourceResponse>> GetAccessibleForUserAsync(string userId, CancellationToken ct)
+    {
+        await EnsureUserExistsAsync(userId, ct);
+        var items = await _accessRepo.GetAccessibleResourcesForUserAsync(userId, ct);
+        return items.Select(Map).ToList();
+    }
+
+    private async Task EnsureUserExistsAsync(string userId, CancellationToken ct)
+    {
+        var profile = await _userProfileRepo.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            throw new UserProfileNotFoundException(userId);
     }
 
     private static ResourceContentType ParseContentType(string contentType)
@@ -111,6 +155,19 @@ public class LearningResourceService : ILearningResourceService
             throw new InvalidEstimatedDurationException(minutes);
     }
 
-    private static LearningResourceResponse Map(LearningResource e) =>
-        new(e.Id, e.Title, e.Description, e.Topic, e.Difficulty, e.EstimatedDurationMinutes, e.ContentType.ToString());
+    public static LearningResourceResponse Map(LearningResource e) =>
+        new(
+            e.Id,
+            e.Title,
+            e.Description,
+            e.Topic,
+            e.Difficulty,
+            e.EstimatedDurationMinutes,
+            e.ContentType.ToString(),
+            e.SourceName,
+            e.Url,
+            e.AccessType.ToString(),
+            e.AccessInstructions,
+            e.Visibility.ToString()
+        );
 }

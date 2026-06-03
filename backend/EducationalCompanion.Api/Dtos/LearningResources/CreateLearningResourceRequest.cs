@@ -8,5 +8,10 @@ public record CreateLearningResourceRequest(
     [param: Required, MinLength(1), MaxLength(100)] string Topic,
     [param: Range(1, 5)] int Difficulty,
     [param: Range(1, 9999)] int EstimatedDurationMinutes,
-    [param: Required, MaxLength(50)] string ContentType
+    [param: Required, MaxLength(50)] string ContentType,
+    [param: MaxLength(150)] string? SourceName = null,
+    [param: MaxLength(2048)] string? Url = null,
+    [param: MaxLength(50)] string? AccessType = null,
+    [param: MaxLength(1000)] string? AccessInstructions = null,
+    [param: MaxLength(50)] string? Visibility = null
 );
