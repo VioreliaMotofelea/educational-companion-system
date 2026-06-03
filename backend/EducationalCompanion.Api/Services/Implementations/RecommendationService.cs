@@ -16,7 +16,6 @@ public class RecommendationService : IRecommendationService
     private const int MaxExplanationLength = 1000;
     private const double AutoTaskMinScore = 0.65;
     private const int AutoTaskFallbackCount = 2;
-    private const int MaxDiscardedIdsLoggedAtInformation = 10;
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> UserRecommendationLocks = new();
 
     private readonly IUserProfileRepository _userProfileRepo;
@@ -175,25 +174,8 @@ public class RecommendationService : IRecommendationService
             normalizedItems.Count,
             request.ReplaceExisting);
 
-        if (discardedResourceIds.Count <= MaxDiscardedIdsLoggedAtInformation)
-        {
-            _logger.LogDebug(
-                "Discarded learning resource ids for user {UserId}: {DiscardedResourceIds}",
-                userId,
-                discardedResourceIds);
-            return;
-        }
-
-        var sampleIds = discardedResourceIds.Take(MaxDiscardedIdsLoggedAtInformation).ToList();
-        _logger.LogInformation(
-            "Discarded learning resource ids for user {UserId} (first {SampleCount} of {TotalCount}, truncated): {DiscardedResourceIds}",
-            userId,
-            sampleIds.Count,
-            discardedResourceIds.Count,
-            sampleIds);
-
         _logger.LogDebug(
-            "Full discarded learning resource id list for user {UserId}: {DiscardedResourceIds}",
+            "Discarded learning resource ids for user {UserId}: {DiscardedResourceIds}",
             userId,
             discardedResourceIds);
     }

@@ -46,7 +46,7 @@ public class RecommendationServiceTests
     }
 
     [Fact]
-    public async Task CreateBatchForUserAsync_ThrowsWhenEmptyRecommendations()
+    public async Task CreateBatchForUserAsync_EmptyRecommendationsWithReplaceExisting_ClearsExisting()
     {
         var userRepo = new FakeUserProfileRepository(hasUser: true);
         var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
@@ -463,12 +463,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
         var accessRepo = new FakeResourceAccessRepository(resourceRepo, Array.Empty<Guid>());
+        var studyTasks = new RecordingStudyTaskService();
 
         var service = new RecommendationService(
             userRepo,
             resourceRepo,
             recRepo,
-            new NoOpStudyTaskService(),
+            studyTasks,
             accessRepo,
             NullLogger<RecommendationService>.Instance);
 
@@ -486,6 +487,7 @@ public class RecommendationServiceTests
         Assert.Equal(1, recRepo.DeleteCalls);
         Assert.Empty(recRepo.Stored);
         Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
     }
 
     [Fact]
@@ -498,12 +500,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
         var accessRepo = new FakeResourceAccessRepository(resourceRepo, Array.Empty<Guid>());
+        var studyTasks = new RecordingStudyTaskService();
 
         var service = new RecommendationService(
             userRepo,
             resourceRepo,
             recRepo,
-            new NoOpStudyTaskService(),
+            studyTasks,
             accessRepo,
             NullLogger<RecommendationService>.Instance);
 
@@ -520,6 +523,8 @@ public class RecommendationServiceTests
         Assert.Equal(0, recRepo.SaveCalls);
         Assert.Single(recRepo.Stored);
         Assert.Equal(Guid.Parse("33333333-3333-3333-3333-333333333333"), recRepo.Stored[0].LearningResourceId);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
     }
 
     [Fact]
@@ -533,12 +538,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
         var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+        var studyTasks = new RecordingStudyTaskService();
 
         var service = new RecommendationService(
             userRepo,
             resourceRepo,
             recRepo,
-            new NoOpStudyTaskService(),
+            studyTasks,
             accessRepo,
             NullLogger<RecommendationService>.Instance);
 
@@ -558,6 +564,9 @@ public class RecommendationServiceTests
         Assert.Single(recRepo.Stored);
         Assert.Equal(R1, recRepo.Stored[0].LearningResourceId);
         Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+        Assert.Equal(1, studyTasks.EnsurePendingTasksCallCount);
+        Assert.Single(studyTasks.LastRecommendationResourceIds);
+        Assert.Equal(R1, studyTasks.LastRecommendationResourceIds[0]);
     }
 
     [Fact]
@@ -569,12 +578,13 @@ public class RecommendationServiceTests
             [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
         });
         var recRepo = new FakeRecommendationRepository();
+        var studyTasks = new RecordingStudyTaskService();
 
         var service = new RecommendationService(
             userRepo,
             resourceRepo,
             recRepo,
-            new NoOpStudyTaskService(),
+            studyTasks,
             new PermissiveResourceAccessRepository(resourceRepo),
             NullLogger<RecommendationService>.Instance);
 
@@ -592,6 +602,9 @@ public class RecommendationServiceTests
         var stored = Assert.Single(recRepo.Stored);
         Assert.Equal(0.9, stored.Score);
         Assert.Equal("higher", stored.Explanation);
+        Assert.Equal(1, studyTasks.EnsurePendingTasksCallCount);
+        Assert.Single(studyTasks.LastRecommendationResourceIds);
+        Assert.Equal(R1, studyTasks.LastRecommendationResourceIds[0]);
     }
 
     [Fact]
@@ -603,12 +616,13 @@ public class RecommendationServiceTests
             [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
         });
         var recRepo = new FakeRecommendationRepository();
+        var studyTasks = new RecordingStudyTaskService();
 
         var service = new RecommendationService(
             userRepo,
             resourceRepo,
             recRepo,
-            new NoOpStudyTaskService(),
+            studyTasks,
             new PermissiveResourceAccessRepository(resourceRepo),
             NullLogger<RecommendationService>.Instance);
 
@@ -620,6 +634,7 @@ public class RecommendationServiceTests
         Assert.Contains("null", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(recRepo.Stored);
         Assert.Equal(0, recRepo.SaveCalls);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
     }
 
     [Fact]
@@ -653,6 +668,36 @@ public class RecommendationServiceTests
 
         Assert.Equal(1, result.CreatedCount);
         Assert.Equal(inner, Assert.Single(recRepo.Stored).AlgorithmUsed);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_TrimsExplanation_BeforeValidationAndStorage()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.5, "Hybrid", "  Good match  "),
+            },
+            ReplaceExisting: true);
+
+        await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal("Good match", Assert.Single(recRepo.Stored).Explanation);
     }
 
     [Fact]
@@ -786,11 +831,14 @@ public class RecommendationServiceTests
         await service.CreateBatchForUserAsync(UserId, request);
 
         var infoLogs = logger.Entries.Where(e => e.Level == LogLevel.Information).ToList();
+        var debugLogs = logger.Entries.Where(e => e.Level == LogLevel.Debug).ToList();
         Assert.NotEmpty(infoLogs);
         Assert.Contains(infoLogs, e => e.Message.Contains("discarded", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(infoLogs, e => e.Message.Contains("1", StringComparison.Ordinal));
-        Assert.All(logger.Entries, e => Assert.DoesNotContain("Secret Title B", e.Message));
-        Assert.All(logger.Entries, e => Assert.DoesNotContain("Visible Title A", e.Message));
+        Assert.All(infoLogs, e => Assert.DoesNotContain(R2.ToString(), e.Message));
+        Assert.All(infoLogs, e => Assert.DoesNotContain("Secret Title B", e.Message));
+        Assert.All(infoLogs, e => Assert.DoesNotContain("Visible Title A", e.Message));
+        Assert.Contains(debugLogs, e => e.Message.Contains(R2.ToString(), StringComparison.Ordinal));
     }
 
     private const int MaxAlgorithmUsedLength = 50;
