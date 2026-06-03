@@ -3,6 +3,7 @@ using System;
 using EducationalCompanion.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EducationalCompanion.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260602211344_AddLearningResourceAccessMetadata")]
+    partial class AddLearningResourceAccessMetadata
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,10 +111,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
                     b.Property<int>("EstimatedDurationMinutes")
                         .HasColumnType("integer");
 
-                    b.Property<string>("OwnerUserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
                     b.Property<string>("SourceName")
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
@@ -141,8 +140,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AccessType");
-
-                    b.HasIndex("OwnerUserId");
 
                     b.HasIndex("Topic");
 
@@ -223,41 +220,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens", (string)null);
-                });
-
-            modelBuilder.Entity("EducationalCompanion.Domain.Entities.ResourceAccessScope", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LearningResourceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ScopeKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("ScopeType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LearningResourceId");
-
-                    b.HasIndex("ScopeType", "ScopeKey");
-
-                    b.HasIndex("LearningResourceId", "ScopeType", "ScopeKey")
-                        .IsUnique();
-
-                    b.ToTable("ResourceAccessScopes", (string)null);
                 });
 
             modelBuilder.Entity("EducationalCompanion.Domain.Entities.ResourceMetadata", b =>
@@ -371,43 +333,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
                     b.HasIndex("UserProfileId");
 
                     b.ToTable("StudyTasks", (string)null);
-                });
-
-            modelBuilder.Entity("EducationalCompanion.Domain.Entities.UserAccessScopeMembership", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ScopeKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("ScopeType")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ScopeType", "ScopeKey");
-
-                    b.HasIndex("UserId", "ScopeType", "ScopeKey")
-                        .IsUnique();
-
-                    b.ToTable("UserAccessScopeMemberships", (string)null);
                 });
 
             modelBuilder.Entity("EducationalCompanion.Domain.Entities.UserBadge", b =>
@@ -767,17 +692,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("EducationalCompanion.Domain.Entities.ResourceAccessScope", b =>
-                {
-                    b.HasOne("EducationalCompanion.Domain.Entities.LearningResource", "LearningResource")
-                        .WithMany("AccessScopes")
-                        .HasForeignKey("LearningResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LearningResource");
-                });
-
             modelBuilder.Entity("EducationalCompanion.Domain.Entities.ResourceMetadata", b =>
                 {
                     b.HasOne("EducationalCompanion.Domain.Entities.LearningResource", "LearningResource")
@@ -918,8 +832,6 @@ namespace EducationalCompanion.Infrastructure.Migrations
 
             modelBuilder.Entity("EducationalCompanion.Domain.Entities.LearningResource", b =>
                 {
-                    b.Navigation("AccessScopes");
-
                     b.Navigation("Interactions");
 
                     b.Navigation("Metadata");

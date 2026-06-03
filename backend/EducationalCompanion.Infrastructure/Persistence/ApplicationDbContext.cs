@@ -21,6 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
 
     public DbSet<LearningResource> LearningResources => Set<LearningResource>();
     public DbSet<ResourceMetadata> ResourceMetadata => Set<ResourceMetadata>();
+    public DbSet<ResourceAccessScope> ResourceAccessScopes => Set<ResourceAccessScope>();
+    public DbSet<UserAccessScopeMembership> UserAccessScopeMemberships => Set<UserAccessScopeMembership>();
 
     public DbSet<UserInteraction> UserInteractions => Set<UserInteraction>();
 
