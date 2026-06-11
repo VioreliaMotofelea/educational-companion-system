@@ -20,16 +20,31 @@ def clear_content_based_tfidf_cache() -> None:
         _tfidf_cache = None
 
 
+def _tfidf_document_text(resource: dict) -> str:
+    parts = [
+        resource.get("title") or "",
+        resource.get("topicName") or "",
+        resource.get("topic") or "",
+        resource.get("activityLabel") or "",
+        resource.get("pedagogicalRole") or "",
+        resource.get("contentFormat") or "",
+        resource.get("difficultyLabel") or "",
+        resource.get("semanticKeywords") or "",
+        resource.get("weekInferred") or resource.get("week") or "",
+        resource.get("coursePhase") or "",
+        resource.get("learningContext") or "",
+        resource.get("description") or "",
+    ]
+    return " ".join(str(p).strip() for p in parts if p)
+
+
 def _resources_tfidf_fingerprint(resources: list) -> str:
     h = hashlib.sha256()
+    h.update(b"tfidf_corpus_v3\n")
     for r in resources:
         h.update(str(r["id"]).encode("utf-8", errors="surrogatepass"))
         h.update(b"\0")
-        h.update((r.get("title") or "").encode("utf-8", errors="surrogatepass"))
-        h.update(b"\0")
-        h.update((r.get("topic") or "").encode("utf-8", errors="surrogatepass"))
-        h.update(b"\0")
-        h.update((r.get("description") or "").encode("utf-8", errors="surrogatepass"))
+        h.update(_tfidf_document_text(r).encode("utf-8", errors="surrogatepass"))
         h.update(b"\n")
     return h.hexdigest()
 
@@ -50,10 +65,7 @@ def _get_or_build_tfidf_matrix(resources: list):
             snap_fp, snap_mat = snap
             if snap_fp == fp:
                 return snap_mat
-        corpus = [
-            f"{r.get('title', '')} {r.get('topic', '')} {r.get('description') or ''}"
-            for r in resources
-        ]
+        corpus = [_tfidf_document_text(r) for r in resources]
         vectorizer = TfidfVectorizer(stop_words="english")
         tfidf_matrix = vectorizer.fit_transform(corpus)
         _tfidf_cache = (fp, tfidf_matrix)

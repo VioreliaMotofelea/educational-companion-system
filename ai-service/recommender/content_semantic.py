@@ -62,12 +62,18 @@ def _resource_id_str(resource_id: Any) -> str:
     return str(resource_id)
 
 
-_SEMANTIC_TEXT_VERSION = "v3"
+_SEMANTIC_TEXT_VERSION = "v5"
+_SITE_ID_SUFFIX = re.compile(r"\s*#\d+\s*$")
 
 # (label, resource dict keys to try in order)
 _LABELED_FIELD_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Title", ("title",)),
-    ("Topic", ("topic",)),
+    ("Module", ("topicName", "learningContext")),
+    ("Topic", ("topic", "codeModule")),
+    ("Role", ("pedagogicalRole",)),
+    ("Format", ("contentFormat",)),
+    ("Difficulty", ("difficultyLabel",)),
+    ("Keywords", ("semanticKeywords",)),
     ("Description", ("description", "desc")),
     ("Summary", ("extractedTextSummary", "extracted_text_summary")),
     ("Content", ("content", "body", "text")),
@@ -76,6 +82,8 @@ _LABELED_FIELD_SPECS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Phase", ("coursePhase", "course_phase")),
     ("Activity", ("activityLabel", "activityType", "activity_type", "activity", "resourceType", "resource_type")),
     ("Presentation", ("presentation", "code_presentation")),
+    ("Learners", ("uniqueLearners",)),
+    ("Engagement", ("totalClicks",)),
 )
 
 
@@ -122,11 +130,23 @@ def _resources_semantic_fingerprint(resources: list) -> str:
     return h.hexdigest()
 
 
+def _normalize_semantic_title(value: str) -> str:
+    cleaned = _SITE_ID_SUFFIX.sub("", value.strip())
+    return " ".join(cleaned.split())
+
+
 def build_resource_semantic_text(resource: dict) -> str:
     fields = _collect_semantic_labeled_fields(resource)
     if not fields:
         return "untitled resource"
-    return "\n".join(f"{label}: {value}" for label, value in fields)
+    lines: list[str] = []
+    for label, value in fields:
+        if label == "Title":
+            value = _normalize_semantic_title(value)
+            if not value:
+                continue
+        lines.append(f"{label}: {value}")
+    return "\n".join(lines) if lines else "untitled resource"
 
 
 def _semantic_explanation_topic(resource: dict) -> str:
