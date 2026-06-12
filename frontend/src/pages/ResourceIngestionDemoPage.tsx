@@ -435,7 +435,7 @@ export default function ResourceIngestionDemoPage() {
         ) : null}
 
         <p className="ingestion-demo__muted">
-          Full curl walkthrough: <code>docs/demo/resource-ingestion-demo.md</code>
+          Sample files: <code>datasets/demo/resource-files/</code> · Alex vs Bianca presets demonstrate course-scoped access on resource 066.
         </p>
       </div>
     </AppLayout>
