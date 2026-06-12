@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
-Run the 7-row OULAD content-mode experiment matrix in-process (no AI env restarts).
-
 Compares popularity baseline vs hybrid (full / no_difficulty) × content fusion
 (tfidf_only, semantic_only, tfidf_semantic) on the SAME evaluated user sample.
-
-See scripts/datasets/OULAD_CONTENT_MODE_EXPERIMENTS.md for usage and interpretation.
 """
 
 from __future__ import annotations
@@ -31,17 +27,16 @@ for path in (str(AI_SERVICE_DIR), str(SCRIPTS_DATASETS_DIR)):
         sys.path.insert(0, path)
 
 from recommender.content_overrides import ContentModeOverrides, overrides_for_fusion_mode  # noqa: E402
-from recommender.hybrid import (  # noqa: E402
+from recommender.hybrid import (
     build_all_fusion_content_maps,
     build_collaborative_score_map,
     build_global_hybrid_context,
     rank_hybrid_from_score_maps,
 )
-from recommender.content_based import prewarm_tfidf_matrix  # noqa: E402
-from recommender.collaborative import prepare_collaborative_matrix  # noqa: E402
+from recommender.content_based import prewarm_tfidf_matrix
+from recommender.collaborative import prepare_collaborative_matrix
 
-# Reuse metric helpers from the existing offline evaluator.
-from evaluate_oulad_offline import (  # noqa: E402
+from evaluate_oulad_offline import (
     DEFAULT_PROCESSED_DIR,
     build_popularity_recommendations,
     evaluate_coverage_diversity_novelty,
@@ -66,8 +61,6 @@ DEFAULT_EXPERIMENT_LABELS: tuple[str, ...] = (
 
 
 class PhaseTimer:
-    """Lightweight phase timing for long offline runs."""
-
     def __init__(self) -> None:
         self._t0 = time.perf_counter()
         self._last = self._t0
@@ -405,7 +398,6 @@ def write_plots(summary_rows: List[dict], k: int, figures_dir: Path) -> None:
 
     pk, rk, nk, hk = f"precision@{k}", f"recall@{k}", f"ndcg@{k}", f"hitRate@{k}"
 
-    # Phase 1 — content modes under hybrid_full (+ popularity)
     phase1_labels = [
         r for r in labels
         if r == "popularity_baseline" or r.startswith("hybrid_full__")
@@ -430,7 +422,6 @@ def write_plots(summary_rows: List[dict], k: int, figures_dir: Path) -> None:
         fig.savefig(figures_dir / "ranking_metrics_comparison.png", dpi=150)
         plt.close(fig)
 
-    # Beyond-accuracy (all rows)
     fig, ax = plt.subplots(figsize=(max(10, len(labels) * 0.55), 5))
     width = 0.25
     for i, (metric, title) in enumerate(
@@ -446,7 +437,6 @@ def write_plots(summary_rows: List[dict], k: int, figures_dir: Path) -> None:
     fig.savefig(figures_dir / "beyond_accuracy_comparison.png", dpi=150)
     plt.close(fig)
 
-    # Difficulty ablation: full minus no_difficulty per fusion mode
     ablation_rows: List[dict] = []
     ablation_labels: List[str] = []
     for fusion in FUSION_MODES:
@@ -520,6 +510,12 @@ def main() -> None:
     )
     parser.add_argument("--processed-dir", type=Path, default=DEFAULT_PROCESSED_DIR)
     parser.add_argument(
+        "--resources-json",
+        type=Path,
+        default=None,
+        help="Optional resources file (e.g. resources_enriched.json). IDs must match interactions.",
+    )
+    parser.add_argument(
         "--run-tag",
         default="eval_content_matrix",
         help="Output folder name under processed-dir (e.g. eval_n3000_tfidf_only is NOT used here; "
@@ -564,8 +560,9 @@ def main() -> None:
         raise SystemExit("--k must be > 0")
     timer = PhaseTimer()
 
-    print("Loading processed OULAD JSON...")
-    resources = load_json_array(processed_dir / "resources.json")
+    resources_path = args.resources_json or (processed_dir / "resources.json")
+    print(f"Loading processed OULAD JSON (resources: {resources_path})...")
+    resources = load_json_array(resources_path)
     users = load_json_array(processed_dir / "users.json")
     train = load_json_array(processed_dir / "interactions_train.json")
     test = load_json_array(processed_dir / "interactions_test.json")
@@ -585,7 +582,6 @@ def main() -> None:
     train_completed_count_by_user: Dict[str, int] = defaultdict(int)
     user_completed_train: Dict[str, Set[str]] = defaultdict(set)
     completed_counts: Dict[str, int] = defaultdict(int)
-    # Completed train counts — same policy as hybrid reranking and novelty@k metrics.
     interaction_counts: Dict[str, int] = defaultdict(int)
     interactions_by_user: Dict[str, List[dict]] = defaultdict(list)
 
@@ -629,6 +625,7 @@ def main() -> None:
 
     experiment_config = {
         "processedDir": str(processed_dir),
+        "resourcesJson": str(resources_path),
         "outputDir": str(out_dir),
         "runTag": args.run_tag,
         "experiments": [s.label for s in specs],
