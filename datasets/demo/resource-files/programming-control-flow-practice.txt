@@ -1,0 +1,139 @@
+PROGRAMMING FUNDAMENTALS — CONTROL FLOW LAB AND PRACTICE HANDOUT
+Catalog: Programming Fundamentals Learning Unit 001 (Global demo resource)
+================================================================================
+
+INTENDED LEARNING OUTCOMES
+--------------------------
+By the end of this session you will be able to:
+  - Choose appropriate conditionals for branching logic.
+  - Implement loops (while, for) with correct boundary cases.
+  - Trace small programs step by step and predict output.
+  - Apply debugging strategies when output diverges from expectation.
+  - Translate word problems into pseudocode and simple algorithms.
+
+Keywords: conditionals, loops, while, for, boundary cases, debugging, pseudocode,
+algorithmic thinking, tracing, control flow.
+
+
+WHY CONTROL FLOW MATTERS
+------------------------
+Variables store data; control flow decides what runs next. Almost every practical
+program combines sequence, selection (if/else), and iteration (loops). Errors in
+control flow are among the most common beginner bugs: off-by-one loops, missing
+else branches, and conditions that never become false.
+
+
+SECTION 1 — CONDITIONAL LOGIC
+-----------------------------
+Read the problem before coding. Underline inputs, outputs, and edge cases.
+
+Example policy: grade classification (pseudocode)
+  IF score >= 90 THEN label = "A"
+  ELSE IF score >= 80 THEN label = "B"
+  ELSE IF score >= 70 THEN label = "C"
+  ELSE label = "Needs review"
+
+Boundary cases to test: 89.9 vs 90, 0, negative input (reject), empty input.
+
+
+SECTION 2 — LOOPS
+-----------------
+While loop: use when repetitions are unknown until a condition changes.
+  WHILE user has not quit:
+    read command
+    process command
+
+For loop: use when the number of iterations is known or you iterate a collection.
+  FOR i FROM 1 TO 10:
+    print i
+
+Boundary cases: first iteration, last iteration, zero iterations (empty collection),
+infinite loop risk when condition never updates.
+
+
+SECTION 3 — TRACING AND DEBUGGING
+---------------------------------
+Tracing table (sample):
+
+  line | x | y | output
+  -----|---|---|-------
+  init | 3 | 0 |
+  while| 3 | 3 | 3
+  while| 2 | 6 | 6
+  while| 1 | 9 | 9
+  while| 0 | 12| 12
+
+Debugging checklist:
+  1) Reproduce with the smallest input.
+  2) Print or log values at branch points.
+  3) Compare actual vs expected trace row by row.
+  4) Check loop exit condition and update statements.
+
+
+SECTION 4 — SIMPLE ALGORITHM DESIGN
+-------------------------------------
+Problem: count how many numbers in a list are above average.
+  1) Compute sum and count; average = sum / count (guard count > 0).
+  2) Second pass: increment counter when value > average.
+  3) Return counter.
+
+Deliverable quality: handle empty list without division by zero.
+
+
+MINI EXERCISES (INCREASING DIFFICULTY)
+--------------------------------------
+Easy:
+  E1) Print numbers 1..N. What breaks when N is 0? When N is negative?
+  E2) Given age, print whether voting eligibility applies (use your locale rules as comment only).
+
+Medium:
+  M1) Sum digits of an integer (loop until n becomes 0).
+  M2) Guess-the-number: loop until correct, count attempts.
+
+Harder:
+  H1) Print first K prime numbers (nested loops acceptable; optimize later).
+  H2) Menu-driven calculator: loop until user selects quit; validate numeric input.
+
+
+EXPECTED DELIVERABLES
+---------------------
+Submit one source file (or notebook) per pair with:
+  - Comment block listing authors and lab date.
+  - Solutions E1, M1, H1 at minimum.
+  - One trace table for M1 pasted in comments.
+  - Two test cases per exercise showing boundary behavior.
+
+
+SELF-CHECK RUBRIC
+-----------------
+| Criterion                         | Met? |
+|-----------------------------------|------|
+| All branches reachable and tested | [ ]  |
+| Loops terminate on test inputs    | [ ]  |
+| No duplicated magic numbers       | [ ]  |
+| Pseudocode or comments for H1     | [ ]  |
+| README line on how to run         | [ ]  |
+
+
+REFLECTION
+----------
+1) Which bug took longest to find: conditional or loop? Why?
+2) How would you explain "boundary case" to a new lab partner?
+3) If the Educational Companion recommends this unit after a quiz on variables only,
+   what skill signal might be missing from your profile?
+
+INSTRUCTOR NOTES (FOR DEMO FACILITATORS)
+----------------------------------------
+Pair students for tracing exercises. Expect 45–60 minutes for E1+M1+H1.
+If the lab room finishes early, challenge pairs to rewrite M1 using a
+for-loop instead of while without changing behavior. Collect one rubric
+row per team for the thesis screenshot on /demo/ingestion.
+
+
+CONNECTION TO ADAPTIVE LEARNING
+-------------------------------
+Semantic summaries from uploaded practice sheets can help the system suggest
+follow-up catalog items on debugging, functions, or data structures. Global
+resources remain visible to all demo learners; course-only sheets stay scoped.
+
+Original thesis demo material — not copied from external coursework banks.

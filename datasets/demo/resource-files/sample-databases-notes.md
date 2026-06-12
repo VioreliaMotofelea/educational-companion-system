@@ -1,8 +1,15 @@
-# Databases demo — supplementary notes
+# Minimal sample — database normalization
 
-This sample file is original content for the Educational Companion thesis demo.
+**Status:** prefer **`databases-normalization-notes.md`** on resource **066**.
 
-Topics covered: relational schemas, functional dependencies, BCNF decomposition,
-and how normalization reduces update anomalies in course materials.
+This file intentionally stays brief to verify Markdown ingestion and summary generation on a small input.
 
-Use only with resources the learner can already access (e.g. course-scoped items).
+## Topic
+
+Functional dependencies and **BCNF**: every determinant must be a superkey. **Update anomalies** appear when course titles are duplicated on enrollment rows.
+
+## One-line practice
+
+Decompose `Enrollment(CourseTitle, …)` so `CourseCode → CourseTitle` lives in a **Course** table.
+
+*Original content — not for primary defense narrative.*
