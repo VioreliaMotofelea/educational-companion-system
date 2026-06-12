@@ -107,3 +107,8 @@ docker-compose.override.yml
 datasets/oulad/raw/
 datasets/oulad/processed/
 *.zip
+
+########################################
+# Anexe
+########################################
+Anexe/
