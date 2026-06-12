@@ -4,6 +4,7 @@ import RecommendationsPage from "../pages/RecommendationsPage";
 import TasksPage from "../pages/TasksPage";
 import CalendarPage from "../pages/CalendarPage";
 import ProfilePage from "../pages/ProfilePage";
+import ResourceIngestionDemoPage from "../pages/ResourceIngestionDemoPage";
 import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import NotFoundPage from "../pages/NotFoundPage";
@@ -20,6 +21,7 @@ export default function AppRoutes() {
         <Route path="/tasks" element={<ProtectedRoute><TasksPage /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/demo/ingestion" element={<ProtectedRoute><ResourceIngestionDemoPage /></ProtectedRoute>} />
         <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
