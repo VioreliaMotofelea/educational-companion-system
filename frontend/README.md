@@ -13,7 +13,7 @@ React 19 + TypeScript single-page application (Vite) for the Intelligent Educati
 | Tasks | `/tasks` | Study task list and management |
 | Calendar | `/calendar` | Schedule-oriented view of tasks and study time |
 | Profile | `/profile` | Account details, preferences, mastery / difficulty insights |
-| Supplementary materials | `/demo/ingestion` | Upload files with automatic text extraction |
+| Supplementary materials | `/materials` | Upload files with automatic text extraction |
 | Auth | `/login`, `/register` | JWT-based sign-in |
 
 All main routes except login/register are protected (`ProtectedRoute`).
@@ -109,15 +109,16 @@ Typical flows:
 1. **Login** → `POST /api/auth/login` → JWT stored in browser storage
 2. **Recommendations** → `GET /api/users/{id}/recommendations`; if empty, `POST /api/users/{id}/recommendations/generate`
 3. **Interactions** → `POST /api/interactions` when starting/completing/rating a resource
-4. **Ingestion** → multipart upload to `/api/resources/{id}/files` with selected user context
+4. **Ingestion** → multipart upload to `/api/resources/{id}/files` for the signed-in user
 
 ---
 
 ## Supplementary materials
 
-Route `/demo/ingestion` — attach files to learning resources with automatic text extraction.
+Route `/materials` — attach files to learning resources in **your** catalog with automatic text extraction.
 
-- **Alex** + *Week 3 Reading — Normalization* (course only): upload `databases-normalization-notes.md` → summary appears in catalog.
-- **Bianca** + same resource: resource not in catalog; upload area disabled.
+- Register `alex.demo@example.com` and `bianca.demo@example.com`, then run `python3 scripts/datasets/seed_demo_catalog.py --apply-sql`.
+- **Alex** sees *Week 3 Reading — Normalization* (Course only); upload `databases-normalization-notes.md` → summary appears.
+- **Bianca** does not see that course reading in the dropdown (access control demo).
 
 Supported: `.txt`, `.md`, `.markdown`, `.docx`, selectable-text `.pdf`.

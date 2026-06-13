@@ -152,19 +152,30 @@ Or use the frontend: open **Recommendations** — the app can trigger generation
 | `/tasks` | Study tasks |
 | `/calendar` | Calendar / scheduling view |
 | `/profile` | Profile and learning preferences |
-| `/demo/ingestion` | Supplementary materials (upload + text extraction) |
+| `/materials` | Supplementary materials (upload + text extraction) |
 | `/login`, `/register` | Authentication |
 
 ---
 
 ## Supplementary materials
 
-Open `/demo/ingestion` with the backend running.
+Open **Supplementary materials** in the sidebar (`/materials`) while logged in.
 
-| Scenario | Learner | Resource | Expected |
-|----------|---------|----------|----------|
-| Course upload | Alex | Week 3 Reading — Normalization | Upload succeeds; summary visible in catalog |
-| Access check | Bianca | Same course resource | Resource not in catalog; upload disabled |
+1. Register demo accounts in the app: `alex.demo@example.com` and `bianca.demo@example.com` (any password).
+2. Apply the demo catalog seed (reads DB connection from `backend/EducationalCompanion.Api/appsettings.json` unless you pass `--db-url`):
+
+```bash
+python3 scripts/datasets/seed_demo_catalog.py --apply-sql
+```
+
+Registration creates a `UserProfiles` row for each account (linked by Identity `UserId`). The seed then attaches demo preferences, course enrollment, and interaction history to those accounts by email.
+
+| Account | What you see |
+|---------|----------------|
+| **Alex** | Week 3 Reading — Normalization and other catalog items; upload works for course materials |
+| **Bianca** | General learning units only; the Databases course reading is not listed |
+
+Suggested upload for the Databases reading: `datasets/demo/resource-files/databases-normalization-notes.md`.
 
 ---
 
