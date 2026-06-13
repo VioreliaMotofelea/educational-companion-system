@@ -13,7 +13,7 @@ export default function ProgressOverview() {
     );
   }
 
-  const { tasksCompleted, tasksPending, tasksOverdue, totalTimeSpentMinutes, totalXpEarned, currentLevel } = analytics.kpis;
+  const { tasksCompleted, tasksPending, tasksOverdue, totalTimeSpentMinutes, currentLevel } = analytics.kpis;
   const totalTasks = tasksCompleted + tasksPending + tasksOverdue;
   const taskCompletionRatePercent = totalTasks > 0 ? (tasksCompleted / totalTasks) * 100 : 0;
 
@@ -33,10 +33,9 @@ export default function ProgressOverview() {
       </div>
 
       <div style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Level & Gains</h3>
+        <h3 style={{ marginTop: 0 }}>Study summary</h3>
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           <div>Current level: <b style={{ color: "var(--color-ai-600)" }}>{currentLevel}</b></div>
-          <div>Total XP: <b>{totalXpEarned}</b></div>
           <div>Total time spent: <b>{totalTimeSpentMinutes}</b> min</div>
         </div>
       </div>
