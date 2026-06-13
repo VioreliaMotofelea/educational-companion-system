@@ -17,15 +17,62 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import uuid
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_DEMO_DIR = ROOT_DIR / "datasets" / "demo"
 DEFAULT_SQL_PATH = DEFAULT_DEMO_DIR / "seed_demo.sql"
+DEFAULT_APPSETTINGS = ROOT_DIR / "backend" / "EducationalCompanion.Api" / "appsettings.json"
+
+
+def parse_npgsql_connection_string(raw: str) -> str:
+    parts: dict[str, str] = {}
+    for segment in raw.split(";"):
+        segment = segment.strip()
+        if not segment or "=" not in segment:
+            continue
+        key, value = segment.split("=", 1)
+        parts[key.strip().lower()] = value.strip()
+
+    host = parts.get("host", "localhost")
+    port = parts.get("port", "5432")
+    database = parts.get("database", "")
+    username = parts.get("username", parts.get("user id", "postgres"))
+    password = parts.get("password", "")
+
+    if not database:
+        raise ValueError("Connection string is missing Database=")
+
+    user_part = quote_plus(username)
+    if password:
+        return f"postgresql://{user_part}:{quote_plus(password)}@{host}:{port}/{database}"
+    return f"postgresql://{user_part}@{host}:{port}/{database}"
+
+
+def resolve_db_url(explicit: str) -> str:
+    if explicit.strip():
+        return explicit.strip()
+
+    for env_name in ("DATABASE_URL", "DEMO_DB_URL"):
+        env_val = os.environ.get(env_name, "").strip()
+        if env_val:
+            return env_val
+
+    if DEFAULT_APPSETTINGS.exists():
+        data = json.loads(DEFAULT_APPSETTINGS.read_text(encoding="utf-8"))
+        conn = str(data.get("ConnectionStrings", {}).get("DefaultConnection", "")).strip()
+        if conn:
+            return parse_npgsql_connection_string(conn)
+
+    raise ValueError(
+        "Database URL required for --apply-sql. Pass --db-url, set DATABASE_URL, "
+        "or configure ConnectionStrings:DefaultConnection in backend appsettings.json"
+    )
 
 VALID_CONTENT_TYPES = {"Article": 1, "Video": 2, "Quiz": 3}
 VALID_ACCESS_TYPES = {
@@ -238,6 +285,138 @@ def validate_tasks(tasks: list[dict[str, Any]], user_ids: set[str], resource_ids
         ensure(1 <= int(row["priority"]) <= 5, f"{prefix}: priority must be 1..5")
         ensure(int(row["estimatedMinutes"]) > 0, f"{prefix}: estimatedMinutes must be > 0")
         ensure(str(row["status"]) in VALID_TASK_STATUS, f"{prefix}: invalid status")
+
+
+def append_identity_account_link_sql(
+    lines: list[str],
+    users: list[dict[str, Any]],
+    user_access_scopes: list[dict[str, Any]],
+    interactions: list[dict[str, Any]],
+    tasks: list[dict[str, Any]],
+) -> None:
+    """Map registered AspNetUsers (by demo email) to catalog access, profile, and history."""
+    lines.append("")
+    lines.append("-- Link registered Identity accounts by demo email (run after /register in the app).")
+    for user in users:
+        email = user.get("email")
+        if not email:
+            continue
+        demo_user_id = str(user["userId"])
+        email_q = sql_quote(str(email).strip().lower())
+
+        lines.append(
+            f"UPDATE \"UserProfiles\" p SET "
+            f"\"Level\" = {int(user['level'])}, "
+            f"\"Xp\" = {int(user['xp'])}, "
+            f"\"DailyAvailableMinutes\" = {int(user['dailyAvailableMinutes'])}, "
+            f"\"UpdatedAtUtc\" = NOW() "
+            f"FROM \"AspNetUsers\" u "
+            f"WHERE p.\"UserId\" = u.\"Id\" AND LOWER(u.\"Email\") = LOWER({email_q});"
+        )
+
+        prefs = user.get("preferences") or {}
+        lines.append(
+            "INSERT INTO \"UserPreferences\" "
+            "(\"Id\", \"UserProfileId\", \"PreferredDifficulty\", \"PreferredContentTypesCsv\", "
+            "\"PreferredTopicsCsv\", \"CreatedAtUtc\") "
+            f"SELECT gen_random_uuid(), p.\"Id\", "
+            f"{sql_nullable_int(prefs.get('preferredDifficulty'))}, "
+            f"{sql_nullable_str(prefs.get('preferredContentTypesCsv'))}, "
+            f"{sql_nullable_str(prefs.get('preferredTopicsCsv'))}, NOW() "
+            f"FROM \"AspNetUsers\" u "
+            f"JOIN \"UserProfiles\" p ON p.\"UserId\" = u.\"Id\" "
+            f"WHERE LOWER(u.\"Email\") = LOWER({email_q}) "
+            "ON CONFLICT (\"UserProfileId\") DO UPDATE SET "
+            "\"PreferredDifficulty\" = EXCLUDED.\"PreferredDifficulty\", "
+            "\"PreferredContentTypesCsv\" = EXCLUDED.\"PreferredContentTypesCsv\", "
+            "\"PreferredTopicsCsv\" = EXCLUDED.\"PreferredTopicsCsv\", "
+            "\"UpdatedAtUtc\" = NOW();"
+        )
+
+        for scope in user_access_scopes:
+            if str(scope["userId"]) != demo_user_id:
+                continue
+            scope_type = VALID_SCOPE_TYPES[str(scope["scopeType"])]
+            scope_key = str(scope["scopeKey"]).strip()
+            membership_id = str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_URL,
+                    f"identity-scope:{email}:{scope['scopeType']}:{scope_key}",
+                )
+            )
+            lines.append(
+                "INSERT INTO \"UserAccessScopeMemberships\" "
+                "(\"Id\", \"UserId\", \"ScopeType\", \"ScopeKey\", \"CreatedAtUtc\") "
+                f"SELECT {sql_quote(membership_id)}::uuid, u.\"Id\", {scope_type}, "
+                f"{sql_quote(scope_key)}, NOW() "
+                f"FROM \"AspNetUsers\" u WHERE LOWER(u.\"Email\") = LOWER({email_q}) "
+                "ON CONFLICT (\"UserId\", \"ScopeType\", \"ScopeKey\") DO UPDATE SET "
+                "\"UpdatedAtUtc\" = NOW();"
+            )
+
+        for row in interactions:
+            if str(row["userId"]) != demo_user_id:
+                continue
+            rec_key = (
+                f"identity-interaction:{email}:{row['learningResourceId']}:"
+                f"{row['interactionType']}:{row.get('createdAtUtc', '')}"
+            )
+            interaction_id = str(uuid.uuid5(uuid.NAMESPACE_URL, rec_key))
+            interaction_type = VALID_INTERACTION_TYPES[str(row["interactionType"])]
+            created_at_sql = (
+                "NOW()"
+                if not row.get("createdAtUtc")
+                else f"{sql_quote(str(row['createdAtUtc']))}::timestamptz"
+            )
+            lines.append(
+                "INSERT INTO \"UserInteractions\" "
+                "(\"Id\", \"UserId\", \"LearningResourceId\", \"InteractionType\", \"Rating\", "
+                "\"TimeSpentMinutes\", \"UserProfileId\", \"CreatedAtUtc\") "
+                f"SELECT {sql_quote(interaction_id)}::uuid, u.\"Id\", "
+                f"{sql_quote(str(row['learningResourceId']))}::uuid, {interaction_type}, "
+                f"{sql_nullable_int(row.get('rating'))}, {sql_nullable_int(row.get('timeSpentMinutes'))}, "
+                f"p.\"Id\", {created_at_sql} "
+                f"FROM \"AspNetUsers\" u "
+                f"JOIN \"UserProfiles\" p ON p.\"UserId\" = u.\"Id\" "
+                f"WHERE LOWER(u.\"Email\") = LOWER({email_q}) "
+                "AND NOT EXISTS ("
+                "SELECT 1 FROM \"UserInteractions\" ui "
+                "WHERE ui.\"UserId\" = u.\"Id\" "
+                f"AND ui.\"LearningResourceId\" = {sql_quote(str(row['learningResourceId']))}::uuid "
+                f"AND ui.\"InteractionType\" = {interaction_type}"
+                ");"
+            )
+
+        for row in tasks:
+            if str(row["userId"]) != demo_user_id:
+                continue
+            task_key = f"identity-task:{email}:{row['title']}:{row['deadlineUtc']}"
+            task_id = str(uuid.uuid5(uuid.NAMESPACE_URL, task_key))
+            status = VALID_TASK_STATUS[str(row["status"])]
+            learning_resource_sql = (
+                "NULL"
+                if row.get("learningResourceId") is None
+                else f"{sql_quote(str(row['learningResourceId']))}::uuid"
+            )
+            lines.append(
+                "INSERT INTO \"StudyTasks\" "
+                "(\"Id\", \"UserId\", \"LearningResourceId\", \"Title\", \"Notes\", \"DeadlineUtc\", "
+                "\"EstimatedMinutes\", \"Priority\", \"Status\", \"UserProfileId\", \"CreatedAtUtc\") "
+                f"SELECT {sql_quote(task_id)}::uuid, u.\"Id\", {learning_resource_sql}, "
+                f"{sql_quote(str(row['title']))}, {sql_nullable_str(row.get('notes'))}, "
+                f"{sql_quote(str(row['deadlineUtc']))}::timestamptz, {int(row['estimatedMinutes'])}, "
+                f"{int(row['priority'])}, {status}, p.\"Id\", NOW() "
+                f"FROM \"AspNetUsers\" u "
+                f"JOIN \"UserProfiles\" p ON p.\"UserId\" = u.\"Id\" "
+                f"WHERE LOWER(u.\"Email\") = LOWER({email_q}) "
+                "ON CONFLICT (\"Id\") DO UPDATE SET "
+                "\"Notes\" = EXCLUDED.\"Notes\", "
+                "\"DeadlineUtc\" = EXCLUDED.\"DeadlineUtc\", "
+                "\"EstimatedMinutes\" = EXCLUDED.\"EstimatedMinutes\", "
+                "\"Priority\" = EXCLUDED.\"Priority\", "
+                "\"Status\" = EXCLUDED.\"Status\", "
+                "\"UpdatedAtUtc\" = NOW();"
+            )
 
 
 def append_access_scope_sql(
@@ -513,6 +692,8 @@ def build_sql(
             "\"UpdatedAtUtc\" = NOW();"
         )
 
+    append_identity_account_link_sql(lines, users, user_access_scopes, interactions, tasks)
+
     lines.append("")
     lines.append("COMMIT;")
     return "\n".join(lines) + "\n"
@@ -562,9 +743,8 @@ def main() -> int:
     )
 
     if args.apply_sql:
-        if not args.db_url:
-            raise ValueError("--db-url is required when using --apply-sql")
-        cmd = ["psql", args.db_url, "-v", "ON_ERROR_STOP=1", "-f", str(args.sql_path)]
+        db_url = resolve_db_url(args.db_url)
+        cmd = ["psql", db_url, "-v", "ON_ERROR_STOP=1", "-f", str(args.sql_path)]
         subprocess.run(cmd, check=True)
         print("Demo SQL import completed (COMMIT).")
 
