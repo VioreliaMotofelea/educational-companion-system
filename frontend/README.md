@@ -13,7 +13,7 @@ React 19 + TypeScript single-page application (Vite) for the Intelligent Educati
 | Tasks | `/tasks` | Study task list and management |
 | Calendar | `/calendar` | Schedule-oriented view of tasks and study time |
 | Profile | `/profile` | Account details, preferences, mastery / difficulty insights |
-| Ingestion | `/demo/ingestion` | Upload supplementary files; demonstrates access-aware extraction |
+| Supplementary materials | `/demo/ingestion` | Upload files with automatic text extraction |
 | Auth | `/login`, `/register` | JWT-based sign-in |
 
 All main routes except login/register are protected (`ProtectedRoute`).
@@ -113,11 +113,11 @@ Typical flows:
 
 ---
 
-## Ingestion
+## Supplementary materials
 
-Route `/demo/ingestion` — upload files from `datasets/demo/resource-files/`.
+Route `/demo/ingestion` — attach files to learning resources with automatic text extraction.
 
-- **demo-alex** + resource `066` (CourseOnly): upload `databases-normalization-notes.md` → extraction succeeds, summary visible on accessible catalog.
-- **demo-bianca** + same resource: upload blocked (403) — demonstrates course-scoped access.
+- **Alex** + *Week 3 Reading — Normalization* (course only): upload `databases-normalization-notes.md` → summary appears in catalog.
+- **Bianca** + same resource: resource not in catalog; upload area disabled.
 
-Supported file types match the backend ingestion validator (`.txt`, `.md`, `.markdown`, `.docx`, selectable-text `.pdf`).
+Supported: `.txt`, `.md`, `.markdown`, `.docx`, selectable-text `.pdf`.

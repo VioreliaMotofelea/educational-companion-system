@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AppLayout from "../components/layout/AppLayout";
-import { getStoredAuthSession } from "../services/authStorage";
 import {
   deleteResourceFile,
   getAccessibleResources,
@@ -14,10 +13,11 @@ import {
 } from "../services/resourceIngestionService";
 import { formatUtcDateTime } from "../utils/formatDate";
 import {
-  DEMO_PRESETS,
+  LEARNER_OPTIONS,
+  QUICK_SCENARIOS,
   RESOURCE_066,
-  SAMPLE_FILES,
-  SUPPORTED_EXTENSIONS,
+  RESOURCE_OPTIONS,
+  SUPPORTED_FILE_TYPES,
 } from "./ingestionDemoConstants";
 import "./ingestion-demo.css";
 
@@ -30,6 +30,37 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function friendlyMime(mime: string): string {
+  const map: Record<string, string> = {
+    "text/plain": "Plain text",
+    "text/markdown": "Markdown",
+    "application/pdf": "PDF",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word document",
+    "application/octet-stream": "Document",
+  };
+  return map[mime] ?? "Document";
+}
+
+function friendlyExtractionMethod(method: string): string {
+  const map: Record<string, string> = {
+    MarkdownText: "Markdown document",
+    PlainText: "Plain text file",
+    PdfText: "PDF document",
+    DocxText: "Word document",
+  };
+  return map[method] ?? method;
+}
+
+function friendlyStatus(status: string): string {
+  const map: Record<string, string> = {
+    Completed: "Ready",
+    Failed: "Failed",
+    Processing: "Processing",
+    Pending: "Pending",
+  };
+  return map[status] ?? status;
+}
+
 function statusClass(status: string): string {
   const s = status.toLowerCase();
   if (s === "completed") return "ingestion-demo__status ingestion-demo__status--completed";
@@ -38,13 +69,24 @@ function statusClass(status: string): string {
   return "ingestion-demo__status ingestion-demo__status--pending";
 }
 
+function friendlyError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("403") || lower.includes("forbidden") || lower.includes("not allowed")) {
+    return "You do not have permission to add materials to this resource. It may be restricted to a specific course or group.";
+  }
+  if (lower.includes("ocr")) {
+    return "This PDF appears to be scanned or image-only. Only documents with selectable text are supported.";
+  }
+  return message;
+}
+
 function isOcrNeeded(error: string | null | undefined): boolean {
   if (!error) return false;
-  const lower = error.toLowerCase();
-  return lower.includes("ocr");
+  return error.toLowerCase().includes("ocr");
 }
 
 export default function ResourceIngestionDemoPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [learnerId, setLearnerId] = useState(DEFAULT_LEARNER);
   const [resourceId, setResourceId] = useState(DEFAULT_RESOURCE);
   const [file, setFile] = useState<File | null>(null);
@@ -52,38 +94,40 @@ export default function ResourceIngestionDemoPage() {
   const [files, setFiles] = useState<ResourceFileRecord[]>([]);
   const [extracted, setExtracted] = useState<ResourceExtractedTextRecord | null>(null);
   const [accessibleRow, setAccessibleRow] = useState<AccessibleLearningResource | null>(null);
-  const [biancaHas066, setBiancaHas066] = useState<boolean | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const session = getStoredAuthSession();
-  const learnerTrimmed = learnerId.trim();
-  const identityMismatch = session != null && session.userId !== learnerTrimmed;
-  const canUpload = Boolean(learnerTrimmed && resourceId.trim() && file && !busy);
+  const selectedLearner = LEARNER_OPTIONS.find((l) => l.id === learnerId);
+  const selectedResource = RESOURCE_OPTIONS.find((r) => r.id === resourceId);
+  const hasCatalogAccess = accessibleRow != null;
+  const canUpload = Boolean(hasCatalogAccess && file && !busy);
 
   const refresh = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      const [fileList, text, accessible] = await Promise.all([
+      const accessible = await getAccessibleResources(learnerId);
+      const row = accessible.find((r) => r.id === resourceId) ?? null;
+      setAccessibleRow(row);
+
+      if (!row) {
+        setFiles([]);
+        setExtracted(null);
+        return;
+      }
+
+      const [fileList, text] = await Promise.all([
         listResourceFiles(resourceId, learnerId),
         getResourceExtractedText(resourceId, learnerId),
-        getAccessibleResources(learnerId),
       ]);
       setFiles(fileList);
       setExtracted(text);
-      setAccessibleRow(accessible.find((r) => r.id === resourceId) ?? null);
-
-      if (resourceId === RESOURCE_066) {
-        const biancaCatalog = await getAccessibleResources("demo-bianca");
-        setBiancaHas066(biancaCatalog.some((r) => r.id === RESOURCE_066));
-      } else {
-        setBiancaHas066(null);
-      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Refresh failed");
+      setError(friendlyError(e instanceof Error ? e.message : "Could not load resource details."));
       setAccessibleRow(null);
+      setFiles([]);
+      setExtracted(null);
     } finally {
       setBusy(false);
     }
@@ -95,29 +139,31 @@ export default function ResourceIngestionDemoPage() {
 
   async function onUpload(e: FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !hasCatalogAccess) return;
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
       const result = await uploadResourceFile(resourceId, learnerId, file);
       if (result.processingStatus === "Completed") {
-        setSuccess(`File processed successfully (${result.originalFileName}).`);
+        setSuccess(`"${result.originalFileName}" was uploaded and processed successfully.`);
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       } else if (result.processingStatus === "Failed") {
-        setError(result.processingError ?? "Extraction failed.");
+        setError(friendlyError(result.processingError ?? "Text extraction failed."));
       } else {
-        setSuccess(`Upload accepted. Status: ${result.processingStatus}`);
+        setSuccess(`File uploaded. Processing status: ${friendlyStatus(result.processingStatus)}.`);
       }
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(friendlyError(err instanceof Error ? err.message : "Upload failed."));
     } finally {
       setBusy(false);
     }
   }
 
   async function onDelete(fileId: string) {
-    if (!window.confirm("Delete this file and its extracted text?")) return;
+    if (!window.confirm("Remove this file and its extracted summary?")) return;
     setBusy(true);
     setError(null);
     try {
@@ -125,18 +171,21 @@ export default function ResourceIngestionDemoPage() {
       setSuccess("File removed.");
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setError(friendlyError(err instanceof Error ? err.message : "Could not remove file."));
     } finally {
       setBusy(false);
     }
   }
 
-  function applyPreset(presetId: string) {
-    const preset = DEMO_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    setLearnerId(preset.learnerId);
-    setResourceId(preset.resourceId);
+  function applyScenario(scenarioId: string) {
+    const scenario = QUICK_SCENARIOS.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    setLearnerId(scenario.learnerId);
+    setResourceId(scenario.resourceId);
     setFile(null);
+    setSuccess(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function onFileChosen(next: File | null) {
@@ -145,143 +194,179 @@ export default function ResourceIngestionDemoPage() {
     setError(null);
   }
 
-  const semanticPreview = useMemo(() => {
-    if (!accessibleRow) return [];
-    const lines: { label: string; value: string }[] = [];
-    lines.push({ label: "Title", value: accessibleRow.title });
-    lines.push({ label: "Topic", value: accessibleRow.topic });
-    if (accessibleRow.description?.trim()) {
-      lines.push({ label: "Description", value: accessibleRow.description });
-    }
-    if (accessibleRow.extractedTextSummary?.trim()) {
-      lines.push({
-        label: "Summary (AI enrichment)",
-        value: `${accessibleRow.extractedTextSummary.slice(0, 160)}${accessibleRow.extractedTextSummary.length > 160 ? "…" : ""}`,
-      });
-    }
-    return lines;
-  }, [accessibleRow]);
-
   const lastFailed = files.find((f) => f.processingStatus === "Failed");
+  const isCourseOnly =
+    accessibleRow?.visibility === "CourseOnly" || selectedResource?.accessLabel === "Course only";
 
   return (
     <AppLayout>
       <div className="ingestion-demo">
         <header className="ingestion-demo__header">
           <div>
-            <h2 style={{ margin: 0 }}>Resource Ingestion</h2>
-            <p className="ingestion-demo__muted" style={{ marginTop: 8, maxWidth: 640 }}>
-              Upload a supported learning material, extract text, and verify that the extracted summary
-              enriches only the accessible catalog entry for the selected learner.
+            <h2 style={{ margin: 0 }}>Supplementary materials</h2>
+            <p className="ingestion-demo__lead">
+              Attach readings, notes, or worksheets to a learning resource. The system extracts text
+              automatically so recommendations can use a short summary—only for learners who can access
+              that resource.
             </p>
           </div>
-          <span className="ingestion-demo__badge">Access-aware extraction</span>
         </header>
-
-        <section className="ingestion-demo__card">
-          <h3>How it works</h3>
-          <ol className="ingestion-demo__steps">
-            <li>Select learner and resource (use presets for Alex vs Bianca).</li>
-            <li>Upload a supported file — TXT, Markdown, DOCX, or selectable-text PDF.</li>
-            <li>
-              Extracted summary appears only on <code>GET /users/…/resources/accessible</code> for that
-              learner.
-            </li>
-          </ol>
-          <p className="ingestion-demo__muted">
-            Scanned or image-only PDFs are not supported (OCR is documented as future work). Sample files
-            live in <code>datasets/demo/resource-files/</code>.
-          </p>
-        </section>
-
-        {identityMismatch ? (
-          <div className="ingestion-demo__alert ingestion-demo__alert--warn">
-            <strong>Login ID ≠ demo learner ID.</strong> You are signed in as{" "}
-            <code>{session?.userId}</code> but the form targets <code>{learnerTrimmed}</code>. API calls
-            omit your JWT so <code>demo-alex</code> demos still work — same as the curl script.
-          </div>
-        ) : null}
 
         {error ? <div className="ingestion-demo__alert ingestion-demo__alert--error">{error}</div> : null}
         {success ? <div className="ingestion-demo__alert ingestion-demo__alert--success">{success}</div> : null}
 
         <section className="ingestion-demo__card">
-          <h3>Access context</h3>
-          <div className="ingestion-demo__grid-2">
-            <div className="ingestion-demo__field">
-              <label htmlFor="learner-id">Learner ID</label>
-              <input
-                id="learner-id"
-                className="ingestion-demo__input"
-                value={learnerId}
-                onChange={(e) => setLearnerId(e.target.value)}
-              />
-            </div>
-            <div className="ingestion-demo__field">
-              <label htmlFor="resource-id">Resource ID</label>
-              <input
-                id="resource-id"
-                className="ingestion-demo__input"
-                value={resourceId}
-                onChange={(e) => setResourceId(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="ingestion-demo__presets">
-            {DEMO_PRESETS.map((p) => (
+          <h3>1. Choose learner and resource</h3>
+          <p className="ingestion-demo__muted">
+            Select who is uploading and which learning resource the file belongs to.
+          </p>
+
+          <div className="ingestion-demo__quick-row">
+            <span className="ingestion-demo__quick-label">Quick setup:</span>
+            {QUICK_SCENARIOS.map((s) => (
               <button
-                key={p.id}
+                key={s.id}
                 type="button"
-                className="ingestion-demo__preset-btn"
-                title={p.hint}
-                onClick={() => applyPreset(p.id)}
+                className="ingestion-demo__chip"
+                onClick={() => applyScenario(s.id)}
               >
-                {p.label}
+                {s.label}
               </button>
             ))}
           </div>
-          <p className="ingestion-demo__muted">
-            <strong>demo-alex</strong> has course access to resource 066. <strong>demo-bianca</strong> should
-            not see or upload to that CourseOnly resource.
-          </p>
+
+          <div className="ingestion-demo__grid-2 ingestion-demo__grid-2--spaced">
+            <div className="ingestion-demo__field">
+              <label htmlFor="learner-select">Learner</label>
+              <select
+                id="learner-select"
+                className="ingestion-demo__select"
+                value={learnerId}
+                onChange={(e) => {
+                  setLearnerId(e.target.value);
+                  setFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              >
+                {LEARNER_OPTIONS.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} — {l.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="ingestion-demo__field">
+              <label htmlFor="resource-select">Learning resource</label>
+              <select
+                id="resource-select"
+                className="ingestion-demo__select"
+                value={resourceId}
+                onChange={(e) => {
+                  setResourceId(e.target.value);
+                  setFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              >
+                {RESOURCE_OPTIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title} ({r.accessLabel})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {!hasCatalogAccess && !busy ? (
+            <div className="ingestion-demo__notice ingestion-demo__notice--neutral">
+              <strong>Not in your catalog.</strong>{" "}
+              {selectedLearner?.name ?? "This learner"} cannot access &ldquo;
+              {selectedResource?.title ?? "this resource"}&rdquo;, so uploads are not available. Try
+              selecting a different learner or a resource they can open.
+            </div>
+          ) : null}
+
+          {hasCatalogAccess && isCourseOnly ? (
+            <div className="ingestion-demo__notice ingestion-demo__notice--info">
+              <strong>Course-restricted resource.</strong> Only learners enrolled in this course will
+              see the uploaded material and its summary in their catalog.
+            </div>
+          ) : null}
         </section>
 
         <section className="ingestion-demo__card">
-          <h3>Upload material</h3>
-          <p className="ingestion-demo__muted">Supported: {SUPPORTED_EXTENSIONS}</p>
+          <h3>2. Upload a file</h3>
+          <p className="ingestion-demo__muted">Supported formats: {SUPPORTED_FILE_TYPES}.</p>
+          {selectedResource?.suggestedFile ? (
+            <p className="ingestion-demo__hint">
+              Suggested file for this resource: <strong>{selectedResource.suggestedFile}</strong>
+            </p>
+          ) : null}
+
           <form onSubmit={onUpload}>
             <div
-              className={`ingestion-demo__dropzone${dragOver ? " ingestion-demo__dropzone--active" : ""}`}
+              className={`ingestion-demo__dropzone${dragOver ? " ingestion-demo__dropzone--active" : ""}${!hasCatalogAccess ? " ingestion-demo__dropzone--disabled" : ""}`}
               onDragOver={(e) => {
+                if (!hasCatalogAccess) return;
                 e.preventDefault();
                 setDragOver(true);
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
+                if (!hasCatalogAccess) return;
                 e.preventDefault();
                 setDragOver(false);
                 const dropped = e.dataTransfer.files?.[0];
                 if (dropped) onFileChosen(dropped);
               }}
+              onClick={() => {
+                if (hasCatalogAccess) fileInputRef.current?.click();
+              }}
+              onKeyDown={(e) => {
+                if (hasCatalogAccess && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              role="button"
+              tabIndex={hasCatalogAccess ? 0 : -1}
+              aria-disabled={!hasCatalogAccess}
             >
-              Drop a file here or use the picker below.
+              {hasCatalogAccess
+                ? "Drag and drop a file here, or click to choose one."
+                : "Upload is unavailable until the resource appears in the learner catalog."}
             </div>
             <input
-              className="ingestion-demo__file-input"
+              ref={fileInputRef}
+              className="ingestion-demo__file-input-hidden"
               type="file"
               accept=".txt,.md,.markdown,.pdf,.docx"
+              disabled={!hasCatalogAccess}
               onChange={(e) => onFileChosen(e.target.files?.[0] ?? null)}
             />
-            {file ? (
-              <p className="ingestion-demo__file-meta">
-                Selected: <strong>{file.name}</strong> ({formatBytes(file.size)}, {file.type || "unknown"})
-              </p>
-            ) : (
-              <p className="ingestion-demo__file-meta">No file selected.</p>
-            )}
+            <div className="ingestion-demo__file-row">
+              <button
+                type="button"
+                className="ingestion-demo__btn ingestion-demo__btn--secondary"
+                disabled={!hasCatalogAccess || busy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose file
+              </button>
+              {file ? (
+                <span className="ingestion-demo__file-meta">
+                  <strong>{file.name}</strong> · {formatBytes(file.size)}
+                </span>
+              ) : (
+                <span className="ingestion-demo__file-meta">No file selected</span>
+              )}
+            </div>
             <div className="ingestion-demo__actions">
-              <button type="submit" className="ingestion-demo__btn ingestion-demo__btn--primary" disabled={!canUpload}>
-                {busy ? "Working…" : "Upload and extract"}
+              <button
+                type="submit"
+                className="ingestion-demo__btn ingestion-demo__btn--primary"
+                disabled={!canUpload}
+              >
+                {busy ? "Working…" : "Upload and extract text"}
               </button>
               <button
                 type="button"
@@ -289,34 +374,22 @@ export default function ResourceIngestionDemoPage() {
                 disabled={busy}
                 onClick={() => void refresh()}
               >
-                Refresh status
+                Refresh
               </button>
             </div>
           </form>
-          <details style={{ marginTop: 12 }}>
-            <summary className="ingestion-demo__muted" style={{ cursor: "pointer" }}>
-              Sample files in repo
-            </summary>
-            <ul className="ingestion-demo__muted" style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-              {SAMPLE_FILES.map((s) => (
-                <li key={s.name}>
-                  <code>{s.name}</code> — {s.type}
-                </li>
-              ))}
-            </ul>
-          </details>
         </section>
 
         <section className="ingestion-demo__card">
-          <h3>Uploaded files</h3>
+          <h3>3. Uploaded files</h3>
           {files.length === 0 ? (
-            <p className="ingestion-demo__empty">No supplementary files uploaded yet.</p>
+            <p className="ingestion-demo__empty">No supplementary files yet for this resource.</p>
           ) : (
             <table className="ingestion-demo__table">
               <thead>
                 <tr>
-                  <th>File</th>
-                  <th>Type</th>
+                  <th>File name</th>
+                  <th>Format</th>
                   <th>Size</th>
                   <th>Status</th>
                   <th>Processed</th>
@@ -327,13 +400,15 @@ export default function ResourceIngestionDemoPage() {
                 {files.map((f) => (
                   <tr key={f.id}>
                     <td>{f.originalFileName}</td>
-                    <td>{f.mimeType}</td>
+                    <td>{friendlyMime(f.mimeType)}</td>
                     <td>{formatBytes(f.sizeBytes)}</td>
                     <td>
-                      <span className={statusClass(f.processingStatus)}>{f.processingStatus}</span>
+                      <span className={statusClass(f.processingStatus)}>
+                        {friendlyStatus(f.processingStatus)}
+                      </span>
                       {f.processingError ? (
-                        <div className="ingestion-demo__muted" style={{ marginTop: 4, maxWidth: 280 }}>
-                          {f.processingError}
+                        <div className="ingestion-demo__muted ingestion-demo__cell-note">
+                          {friendlyError(f.processingError)}
                         </div>
                       ) : null}
                     </td>
@@ -342,10 +417,10 @@ export default function ResourceIngestionDemoPage() {
                       <button
                         type="button"
                         className="ingestion-demo__btn--danger"
-                        disabled={busy}
+                        disabled={busy || !hasCatalogAccess}
                         onClick={() => void onDelete(f.id)}
                       >
-                        Delete
+                        Remove
                       </button>
                     </td>
                   </tr>
@@ -356,87 +431,56 @@ export default function ResourceIngestionDemoPage() {
         </section>
 
         <section className="ingestion-demo__card">
-          <h3>Summary preview</h3>
+          <h3>4. Extracted summary</h3>
           {extracted?.summary ? (
             <>
-              <dl className="ingestion-demo__meta-grid" style={{ marginBottom: 12 }}>
-                <dt>Method</dt>
-                <dd>{extracted.extractionMethod}</dd>
-                <dt>Characters</dt>
-                <dd>{extracted.characterCount}</dd>
-                <dt>Created</dt>
+              <dl className="ingestion-demo__meta-grid ingestion-demo__meta-grid--compact">
+                <dt>Source</dt>
+                <dd>{friendlyExtractionMethod(extracted.extractionMethod)}</dd>
+                <dt>Updated</dt>
                 <dd>{formatUtcDateTime(extracted.createdAtUtc)}</dd>
               </dl>
               <div className="ingestion-demo__preview">{extracted.summary}</div>
             </>
           ) : lastFailed && isOcrNeeded(lastFailed.processingError) ? (
             <p className="ingestion-demo__empty">
-              This file appears to require OCR. OCR is documented as future work and is not part of the
-              current MVP.
+              Text could not be extracted from the last upload. Scanned PDFs are not supported—use a
+              document with selectable text.
             </p>
           ) : (
             <p className="ingestion-demo__empty">
-              No extracted summary is available yet. Upload a supported file or refresh after processing.
+              No summary yet. Upload a supported file to generate one automatically.
             </p>
           )}
         </section>
 
-        <section className="ingestion-demo__card">
-          <h3>Accessible catalog verification</h3>
-          {!accessibleRow ? (
-            <div className="ingestion-demo__alert ingestion-demo__alert--warn">
-              This learner cannot access the selected resource. File operations and extracted summary
-              should be blocked by the backend.
-            </div>
-          ) : (
+        {hasCatalogAccess ? (
+          <section className="ingestion-demo__card">
+            <h3>5. Catalog entry</h3>
+            <p className="ingestion-demo__muted">
+              This is how the resource appears in {selectedLearner?.name ?? "the learner"}&apos;s
+              accessible catalog after upload.
+            </p>
             <dl className="ingestion-demo__meta-grid">
               <dt>Title</dt>
               <dd>{accessibleRow.title}</dd>
               <dt>Topic</dt>
               <dd>{accessibleRow.topic}</dd>
-              <dt>Visibility</dt>
-              <dd>{accessibleRow.visibility ?? "—"}</dd>
-              <dt>Has supplementary file</dt>
+              <dt>Access</dt>
+              <dd>{accessibleRow.visibility ?? selectedResource?.accessLabel ?? "—"}</dd>
+              <dt>Supplementary file</dt>
               <dd>{accessibleRow.hasSupplementaryFile ? "Yes" : "No"}</dd>
-              <dt>Summary length</dt>
-              <dd>{accessibleRow.extractedTextSummary?.length ?? 0}</dd>
-              <dt>Summary for AI</dt>
-              <dd>{accessibleRow.extractedTextSummary ? "Yes" : "No"}</dd>
+              <dt>Summary for recommendations</dt>
+              <dd>{accessibleRow.extractedTextSummary ? "Available" : "Not yet available"}</dd>
             </dl>
-          )}
-
-          {resourceId === RESOURCE_066 && biancaHas066 !== null ? (
-            <div
-              className={`ingestion-demo__alert ${biancaHas066 ? "ingestion-demo__alert--error" : "ingestion-demo__alert--success"}`}
-              style={{ marginTop: 12 }}
-            >
-              Privacy check (resource 066): demo-bianca catalog{" "}
-              {biancaHas066 ? "includes" : "does not include"} this CourseOnly resource
-              {biancaHas066 ? " — unexpected!" : " — expected."}
-            </div>
-          ) : null}
-        </section>
-
-        {semanticPreview.length > 0 ? (
-          <section className="ingestion-demo__card">
-            <h3>AI semantic text contribution</h3>
-            <p className="ingestion-demo__muted">
-              The recommendation service builds labeled text from metadata plus optional summary (not full
-              extracted text).
-            </p>
-            <ul className="ingestion-demo__semantic-lines">
-              {semanticPreview.map((line) => (
-                <li key={line.label}>
-                  <strong>{line.label}:</strong> {line.value}
-                </li>
-              ))}
-            </ul>
+            {accessibleRow.extractedTextSummary ? (
+              <p className="ingestion-demo__hint">
+                The recommendation engine uses the title, topic, description, and this summary—never
+                the full file—for learners who can access this resource.
+              </p>
+            ) : null}
           </section>
         ) : null}
-
-        <p className="ingestion-demo__muted">
-          Sample files: <code>datasets/demo/resource-files/</code> · Alex vs Bianca presets demonstrate course-scoped access on resource 066.
-        </p>
       </div>
     </AppLayout>
   );

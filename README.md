@@ -152,22 +152,19 @@ Or use the frontend: open **Recommendations** — the app can trigger generation
 | `/tasks` | Study tasks |
 | `/calendar` | Calendar / scheduling view |
 | `/profile` | Profile and learning preferences |
-| `/demo/ingestion` | Resource ingestion (access-aware upload + extraction) |
+| `/demo/ingestion` | Supplementary materials (upload + text extraction) |
 | `/login`, `/register` | Authentication |
 
 ---
 
-## Ingestion
+## Supplementary materials
 
-Open `http://localhost:5173/demo/ingestion` with the backend running. Sample files are in `datasets/demo/resource-files/`.
+Open `/demo/ingestion` with the backend running.
 
-| Scenario | Preset | File | Expected |
-|----------|--------|------|----------|
-| Course + privacy | Alex + resource 066 | `databases-normalization-notes.md` | Upload succeeds; summary on Alex’s accessible catalog |
-| Access denied | Bianca + 066 | same | Upload blocked (403) |
-| Other formats | various presets | `.txt`, `.docx`, `.pdf` in resource-files | Regenerate binaries: `python scripts/demo/generate_binary_demo_files.py` |
-
-Supported uploads: `.txt`, `.md`, `.markdown`, `.docx`, selectable-text `.pdf` (no OCR).
+| Scenario | Learner | Resource | Expected |
+|----------|---------|----------|----------|
+| Course upload | Alex | Week 3 Reading — Normalization | Upload succeeds; summary visible in catalog |
+| Access check | Bianca | Same course resource | Resource not in catalog; upload disabled |
 
 ---
 
