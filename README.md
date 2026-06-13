@@ -47,7 +47,7 @@ Monorepo layout:
 |------|------|
 | [`backend/`](backend/) | REST API, persistence, EDM read layer, ingestion, auth, orchestration to AI service |
 | [`ai-service/`](ai-service/) | Hybrid recommendation engine and evaluation helpers |
-| [`frontend/`](frontend/) | Learner-facing SPA (dashboard, recommendations, tasks, calendar, profile, ingestion demo) |
+| [`frontend/`](frontend/) | Learner-facing SPA (dashboard, recommendations, tasks, calendar, profile, ingestion) |
 | [`datasets/`](datasets/) | Demo seed data and OULAD processed research artifacts |
 | [`scripts/`](scripts/) | Dataset pipelines, OULAD experiments, demo tooling |
 

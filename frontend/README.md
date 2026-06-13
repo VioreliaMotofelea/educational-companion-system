@@ -13,7 +13,7 @@ React 19 + TypeScript single-page application (Vite) for the Intelligent Educati
 | Tasks | `/tasks` | Study task list and management |
 | Calendar | `/calendar` | Schedule-oriented view of tasks and study time |
 | Profile | `/profile` | Account details, preferences, mastery / difficulty insights |
-| Ingestion demo | `/demo/ingestion` | Upload supplementary files; demonstrates access-aware extraction |
+| Ingestion | `/demo/ingestion` | Upload supplementary files; demonstrates access-aware extraction |
 | Auth | `/login`, `/register` | JWT-based sign-in |
 
 All main routes except login/register are protected (`ProtectedRoute`).

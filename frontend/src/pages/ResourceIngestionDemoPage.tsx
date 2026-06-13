@@ -169,7 +169,7 @@ export default function ResourceIngestionDemoPage() {
       <div className="ingestion-demo">
         <header className="ingestion-demo__header">
           <div>
-            <h2 style={{ margin: 0 }}>Resource ingestion demo</h2>
+            <h2 style={{ margin: 0 }}>Resource Ingestion</h2>
             <p className="ingestion-demo__muted" style={{ marginTop: 8, maxWidth: 640 }}>
               Upload a supported learning material, extract text, and verify that the extracted summary
               enriches only the accessible catalog entry for the selected learner.

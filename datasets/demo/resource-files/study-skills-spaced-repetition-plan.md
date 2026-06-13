@@ -135,4 +135,4 @@ Prioritize topics with confidence ≤ 2 in the next two days.
 
 ---
 
-*Original thesis demo material for the Educational Companion System ingestion demo.*
+*Original material for the Educational Companion System ingestion.*
