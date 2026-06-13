@@ -289,6 +289,98 @@ export const login = async (payload: { email: string; password: string }) => {
 
 export const getCurrentUser = () => fetcher<CurrentUserResponse>(`${API_BASE}/auth/me`);
 
+export type AccessibleLearningResource = {
+  id: string;
+  title: string;
+  description: string | null;
+  topic: string;
+  difficulty: number;
+  estimatedDurationMinutes: number;
+  contentType: string;
+  sourceName?: string | null;
+  url?: string | null;
+  accessType?: string;
+  accessInstructions?: string | null;
+  visibility?: string;
+  extractedTextSummary?: string | null;
+  hasSupplementaryFile: boolean;
+};
+
+export type ResourceFileRecord = {
+  id: string;
+  learningResourceId: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  processingStatus: string;
+  processingError: string | null;
+  createdAtUtc: string;
+  processedAtUtc: string | null;
+  uploadedByUserId: string | null;
+};
+
+export type ResourceExtractedTextRecord = {
+  learningResourceId: string;
+  resourceFileId: string;
+  summary: string | null;
+  extractionMethod: string;
+  characterCount: number;
+  createdAtUtc: string;
+};
+
+export const getAccessibleResources = (userId: string): Promise<AccessibleLearningResource[]> =>
+  fetcher<AccessibleLearningResource[]>(`${API_BASE}/users/${userId}/resources/accessible`);
+
+export const listResourceFiles = (resourceId: string, userId: string): Promise<ResourceFileRecord[]> =>
+  fetcher<ResourceFileRecord[]>(
+    `${API_BASE}/resources/${resourceId}/files?userId=${encodeURIComponent(userId)}`,
+  );
+
+export async function getResourceExtractedText(
+  resourceId: string,
+  userId: string,
+): Promise<ResourceExtractedTextRecord | null> {
+  const res = await fetch(
+    `${API_BASE}/resources/${resourceId}/extracted-text?userId=${encodeURIComponent(userId)}`,
+    applyAuthHeader(),
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    let message = "Could not load extracted summary.";
+    try {
+      const parsed = (await res.json()) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      // keep default
+    }
+    throw new Error(message);
+  }
+  return res.json();
+}
+
+export const uploadResourceFile = (
+  resourceId: string,
+  userId: string,
+  file: File,
+): Promise<ResourceFileRecord> => {
+  const form = new FormData();
+  form.append("file", file);
+  return fetcher<ResourceFileRecord>(
+    `${API_BASE}/resources/${resourceId}/files?userId=${encodeURIComponent(userId)}`,
+    { method: "POST", body: form },
+  );
+};
+
+export const deleteResourceFile = (
+  resourceId: string,
+  fileId: string,
+  userId: string,
+): Promise<void> =>
+  fetcher<void>(
+    `${API_BASE}/resources/${resourceId}/files/${fileId}?userId=${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  );
+
 export const logout = async () => {
   const session = getStoredAuthSession();
   if (!session) return;
