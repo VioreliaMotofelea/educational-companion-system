@@ -78,7 +78,7 @@ const navItems: NavItem[] = [
   { to: "/tasks", label: "Tasks", icon: <IconTasks /> },
   { to: "/calendar", label: "Calendar", icon: <IconCalendar /> },
   { to: "/profile", label: "Profile", icon: <IconProfile /> },
-  { to: "/demo/ingestion", label: "Supplementary materials", icon: <IconRecommendations /> },
+  { to: "/materials", label: "Supplementary materials", icon: <IconRecommendations /> },
 ];
 
 export default function Sidebar({ narrow = false, open = false, onNavigate }: Props) {

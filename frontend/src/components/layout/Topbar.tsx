@@ -19,6 +19,7 @@ export default function Topbar({ narrow = false, onOpenMenu }: Props) {
     if (pathname === "/tasks") return "Tasks";
     if (pathname === "/calendar") return "Calendar";
     if (pathname === "/profile") return "Profile";
+    if (pathname === "/materials" || pathname === "/demo/ingestion") return "Supplementary materials";
     return "Educational Companion";
   }, [pathname]);
 
