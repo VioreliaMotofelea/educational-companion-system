@@ -351,7 +351,6 @@ export async function getResourceExtractedText(
       const parsed = (await res.json()) as { error?: string };
       if (parsed.error) message = parsed.error;
     } catch {
-      // keep default
     }
     throw new Error(message);
   }

@@ -68,7 +68,6 @@ function friendlyVisibility(value?: string | null): string {
   return map[value] ?? value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-/** Course/group materials and items that already have uploads — not every open-catalog unit. */
 function resourcesForSupplementaryUpload(
   catalog: AccessibleLearningResource[],
 ): AccessibleLearningResource[] {
