@@ -4,7 +4,7 @@ namespace EducationalCompanion.Domain.Entities;
 
 public class UserProfile : AuditableEntity
 {
-    // Identity user id (string) - îl vei lega în Infrastructure/API
+    // Identity user id (links to AspNetUsers.Id)
     public string UserId { get; set; } = null!;
 
     // Gamification

@@ -114,8 +114,6 @@ public class UserEdmService : IUserEdmService
             parts.Add($"{kpis.TotalResourcesCompleted} completed resources across your engaged set ({kpis.CompletionRatePercent}% completion rate).");
         if (kpis.TotalTimeSpentMinutes > 0)
             parts.Add($"Total study time: {kpis.TotalTimeSpentMinutes} minutes.");
-        if (kpis.TotalXpEarned > 0)
-            parts.Add($"Level {kpis.CurrentLevel}, {kpis.TotalXpEarned} XP; {kpis.GamificationEventsCount} gamification events.");
         if (kpis.TasksCompleted + kpis.TasksPending + kpis.TasksOverdue > 0)
             parts.Add($"Tasks: {kpis.TasksCompleted} completed, {kpis.TasksPending} pending, {kpis.TasksOverdue} overdue.");
         return parts.Count > 0 ? string.Join(" ", parts) : "No activity yet. Start by viewing and completing resources.";
