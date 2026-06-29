@@ -219,7 +219,12 @@ public class UserEdmServiceTests
 
         var learningRepo = new FakeLearningResourceRepository(catalog);
         var accessRepo = new FakeResourceAccessRepository(learningRepo, new[] { globalId });
-        var service = new UserEdmService(userRepo, recRepo, edmRepo, accessRepo);
+        var service = new UserEdmService(
+            userRepo,
+            recRepo,
+            edmRepo,
+            accessRepo,
+            new FakeUserInteractionRepository());
 
         var result = await service.GetRecommendationsAsync("demo-bianca", limit: null, CancellationToken.None);
 
@@ -227,16 +232,132 @@ public class UserEdmServiceTests
         Assert.Equal(globalId, result[0].Resource.Id);
     }
 
+    [Fact]
+    public async Task GetRecommendationsAsync_ExcludesCompletedResources()
+    {
+        var resourceId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+        var otherId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+
+        var catalog = new Dictionary<Guid, LearningResource>
+        {
+            [resourceId] = new LearningResource
+            {
+                Id = resourceId,
+                Title = "Done",
+                Topic = "DB",
+                Difficulty = 1,
+                EstimatedDurationMinutes = 10,
+                ContentType = ResourceContentType.Article,
+                Visibility = ResourceVisibility.Global
+            },
+            [otherId] = new LearningResource
+            {
+                Id = otherId,
+                Title = "Next",
+                Topic = "DB",
+                Difficulty = 2,
+                EstimatedDurationMinutes = 15,
+                ContentType = ResourceContentType.Article,
+                Visibility = ResourceVisibility.Global
+            }
+        };
+
+        var userProfile = new UserProfile { UserId = "user-1", Level = 1, Xp = 0, DailyAvailableMinutes = 60 };
+        var userRepo = new FakeUserProfileRepository(profile: userProfile);
+        var edmRepo = new FakeUserEdmReadRepository(kpis: null, topicMastery: new List<TopicMasteryData>());
+        var recRepo = new FakeRecommendationRepository(new List<Recommendation>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = "user-1",
+                LearningResourceId = resourceId,
+                Score = 0.95,
+                AlgorithmUsed = "Hybrid",
+                Explanation = "done item",
+                LearningResource = catalog[resourceId]
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = "user-1",
+                LearningResourceId = otherId,
+                Score = 0.8,
+                AlgorithmUsed = "Hybrid",
+                Explanation = "next item",
+                LearningResource = catalog[otherId]
+            }
+        });
+
+        var interactionRepo = new FakeUserInteractionRepository(new Dictionary<Guid, UserInteraction>
+        {
+            [Guid.NewGuid()] = new UserInteraction
+            {
+                Id = Guid.NewGuid(),
+                UserId = "user-1",
+                LearningResourceId = resourceId,
+                InteractionType = InteractionType.Completed,
+                CreatedAtUtc = DateTime.UtcNow
+            }
+        });
+
+        var service = CreateService(userRepo, recRepo, edmRepo, catalog.Values, interactionRepo);
+        var result = await service.GetRecommendationsAsync("user-1", limit: null, CancellationToken.None);
+
+        Assert.Single(result);
+        Assert.Equal(otherId, result[0].Resource.Id);
+    }
+
     private static UserEdmService CreateService(
         FakeUserProfileRepository userRepo,
         FakeRecommendationRepository recRepo,
         FakeUserEdmReadRepository edmRepo,
-        IEnumerable<LearningResource>? catalog = null)
+        IEnumerable<LearningResource>? catalog = null,
+        FakeUserInteractionRepository? interactionRepo = null)
     {
         var resources = catalog?.ToDictionary(r => r.Id) ?? new Dictionary<Guid, LearningResource>();
         var learningRepo = new FakeLearningResourceRepository(resources);
         var accessRepo = new PermissiveResourceAccessRepository(learningRepo);
-        return new UserEdmService(userRepo, recRepo, edmRepo, accessRepo);
+        return new UserEdmService(
+            userRepo,
+            recRepo,
+            edmRepo,
+            accessRepo,
+            interactionRepo ?? new FakeUserInteractionRepository());
+    }
+
+    private sealed class FakeUserInteractionRepository : IUserInteractionRepository
+    {
+        private readonly Dictionary<Guid, UserInteraction> _stored;
+
+        public FakeUserInteractionRepository(Dictionary<Guid, UserInteraction>? seed = null) =>
+            _stored = seed ?? new Dictionary<Guid, UserInteraction>();
+
+        public Task<IReadOnlyList<UserInteraction>> GetByUserAsync(string userId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<UserInteraction>>(_stored.Values.Where(x => x.UserId == userId).ToList());
+
+        public Task<IReadOnlyList<UserInteraction>> SearchAsync(
+            string? userId,
+            Guid? learningResourceId,
+            string? interactionType,
+            CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<UserInteraction>>(Array.Empty<UserInteraction>());
+
+        public Task<bool> ExistsAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
+            Task.FromResult(false);
+
+        public Task<UserInteraction?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult<UserInteraction?>(null);
+
+        public Task<IReadOnlyList<UserInteraction>> GetAllAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<UserInteraction>>(_stored.Values.ToList());
+
+        public IQueryable<UserInteraction> Query() => _stored.Values.AsQueryable();
+
+        public Task AddAsync(UserInteraction entity, CancellationToken ct = default) => Task.CompletedTask;
+        public void Update(UserInteraction entity) { }
+        public void Remove(UserInteraction entity) { }
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
     private sealed class FakeLearningResourceRepository : ILearningResourceRepository

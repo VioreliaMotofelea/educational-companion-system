@@ -119,6 +119,15 @@ public class RecommendationService : IRecommendationService
                 await _recommendationRepo.AddAsync(entity, ct);
 
             await _recommendationRepo.SaveChangesAsync(ct);
+            var allRecommendedResourceIds = entities
+                .Select(e => e.LearningResourceId)
+                .ToList();
+
+            await _studyTaskService.SyncRecommendationLinkedTasksAsync(
+                userId,
+                allRecommendedResourceIds,
+                ct);
+
             var taskCandidateIds = entities
                 .Where(e => e.Score >= AutoTaskMinScore)
                 .OrderByDescending(e => e.Score)

@@ -71,7 +71,8 @@ public class UserInteractionService : IUserInteractionService
             LearningResourceId = request.LearningResourceId,
             InteractionType = interactionType,
             Rating = request.Rating,
-            TimeSpentMinutes = request.TimeSpentMinutes
+            TimeSpentMinutes = request.TimeSpentMinutes,
+            CreatedAtUtc = DateTime.UtcNow
         };
 
         await _repo.AddAsync(entity, ct);

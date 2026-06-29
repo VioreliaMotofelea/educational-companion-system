@@ -25,6 +25,9 @@ public sealed class NoOpStudyTaskService : IStudyTaskService
     public Task EnsurePendingTasksForRecommendationsAsync(string userId, IReadOnlyList<Guid> resourceIds, CancellationToken ct = default) =>
         Task.CompletedTask;
 
+    public Task SyncRecommendationLinkedTasksAsync(string userId, IReadOnlyList<Guid> activeResourceIds, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
     public Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
         Task.CompletedTask;
 }

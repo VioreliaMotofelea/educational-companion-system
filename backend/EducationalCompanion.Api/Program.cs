@@ -14,13 +14,19 @@ using EducationalCompanion.Infrastructure.Repositories.Implementations;
 
 using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Api.Services.Implementations;
+using EducationalCompanion.Api.Serialization;
 using EducationalCompanion.Api.Middleware;
 using EducationalCompanion.Api.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -110,6 +116,7 @@ builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAiGenerationService, AiGenerationService>();
 builder.Services.AddScoped<IStudyTaskService, StudyTaskService>();
+builder.Services.AddScoped<IStudyScheduleService, StudyScheduleService>();
 
 var app = builder.Build();
 

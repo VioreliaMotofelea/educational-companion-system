@@ -4,6 +4,7 @@ using EducationalCompanion.Api.Dtos.Mastery;
 using EducationalCompanion.Api.Dtos.Recommendations;
 using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Domain.Entities;
+using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Edm;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
@@ -20,17 +21,20 @@ public class UserEdmService : IUserEdmService
     private readonly IRecommendationRepository _recommendationRepo;
     private readonly IUserEdmReadRepository _edmReadRepo;
     private readonly IResourceAccessRepository _accessRepo;
+    private readonly IUserInteractionRepository _interactionRepo;
 
     public UserEdmService(
         IUserProfileRepository userProfileRepo,
         IRecommendationRepository recommendationRepo,
         IUserEdmReadRepository edmReadRepo,
-        IResourceAccessRepository accessRepo)
+        IResourceAccessRepository accessRepo,
+        IUserInteractionRepository interactionRepo)
     {
         _userProfileRepo = userProfileRepo;
         _recommendationRepo = recommendationRepo;
         _edmReadRepo = edmReadRepo;
         _accessRepo = accessRepo;
+        _interactionRepo = interactionRepo;
     }
 
     public async Task<UserAnalyticsResponse> GetAnalyticsAsync(string userId, CancellationToken ct = default)
@@ -69,8 +73,16 @@ public class UserEdmService : IUserEdmService
             .Select(r => r.Id)
             .ToHashSet();
 
+        var completedResourceIds = (await _interactionRepo.GetByUserAsync(userId, ct))
+            .Where(i => i.InteractionType == InteractionType.Completed)
+            .Select(i => i.LearningResourceId)
+            .ToHashSet();
+
         return recommendations
-            .Where(r => r.LearningResource != null && accessibleIds.Contains(r.LearningResourceId))
+            .Where(r =>
+                r.LearningResource != null
+                && accessibleIds.Contains(r.LearningResourceId)
+                && !completedResourceIds.Contains(r.LearningResourceId))
             .Select(r => MapToRecommendationItem(r))
             .ToList();
     }

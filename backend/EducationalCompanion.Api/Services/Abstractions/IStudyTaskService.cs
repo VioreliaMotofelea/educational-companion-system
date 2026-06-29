@@ -10,6 +10,7 @@ public interface IStudyTaskService
     Task<StudyTaskResponse> UpdateStatusAsync(string userId, Guid taskId, UpdateStudyTaskStatusRequest request, CancellationToken ct = default);
     Task DeleteAsync(string userId, Guid taskId, CancellationToken ct = default);
     Task EnsurePendingTasksForRecommendationsAsync(string userId, IReadOnlyList<Guid> resourceIds, CancellationToken ct = default);
+    Task SyncRecommendationLinkedTasksAsync(string userId, IReadOnlyList<Guid> activeResourceIds, CancellationToken ct = default);
     Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default);
 }
 

@@ -81,6 +81,23 @@ public class UserProfileService : IUserProfileService
         await _repo.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateStudySettingsAsync(string userId, UpdateUserStudySettingsRequest request, CancellationToken ct)
+    {
+        var profile = await _repo.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            throw new UserProfileNotFoundException(userId);
+
+        ValidateDailyAvailableMinutes(request.DailyAvailableMinutes);
+        profile.DailyAvailableMinutes = request.DailyAvailableMinutes;
+        await _repo.SaveChangesAsync(ct);
+    }
+
+    private static void ValidateDailyAvailableMinutes(int minutes)
+    {
+        if (minutes is < 15 or > 600)
+            throw new InvalidDailyAvailableMinutesException(minutes);
+    }
+
     private static void ValidatePreferredDifficulty(int value)
     {
         if (value < MinPreferredDifficulty || value > MaxPreferredDifficulty)

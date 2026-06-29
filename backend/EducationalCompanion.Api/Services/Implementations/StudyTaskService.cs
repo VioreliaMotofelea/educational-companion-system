@@ -13,6 +13,9 @@ namespace EducationalCompanion.Api.Services.Implementations;
 
 public class StudyTaskService : IStudyTaskService
 {
+    internal const string AutoCreatedFromRecommendationsNote = "Auto-created from current recommendations.";
+    private const int AutoTaskPipelineTarget = 10;
+
     private readonly ApplicationDbContext _dbContext;
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly ILearningResourceRepository _learningResourceRepo;
@@ -44,6 +47,8 @@ public class StudyTaskService : IStudyTaskService
                 task.Status = DomainTaskStatus.Overdue;
             await _dbContext.SaveChangesAsync(ct);
         }
+
+        await RefillAutoTasksFromCurrentRecommendationsAsync(userId, ct);
 
         var tasks = await _dbContext.StudyTasks
             .AsNoTracking()
@@ -159,14 +164,17 @@ public class StudyTaskService : IStudyTaskService
         await EnsureUserExistsAsync(userId, ct);
         if (resourceIds.Count == 0) return;
 
-        var topResourceIds = resourceIds.Distinct().Take(5).ToList();
-        var existingPendingIds = await _dbContext.StudyTasks
+        var topResourceIds = resourceIds.Distinct().Take(AutoTaskPipelineTarget).ToList();
+        var existingOpenIds = await _dbContext.StudyTasks
             .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Status == DomainTaskStatus.Pending && t.LearningResourceId.HasValue)
+            .Where(t =>
+                t.UserId == userId
+                && t.LearningResourceId.HasValue
+                && (t.Status == DomainTaskStatus.Pending || t.Status == DomainTaskStatus.Overdue))
             .Select(t => t.LearningResourceId!.Value)
             .ToListAsync(ct);
 
-        var toCreate = topResourceIds.Except(existingPendingIds).ToList();
+        var toCreate = topResourceIds.Except(existingOpenIds).ToList();
         if (toCreate.Count == 0) return;
 
         var resources = await _dbContext.LearningResources
@@ -192,7 +200,7 @@ public class StudyTaskService : IStudyTaskService
                 UserId = userId,
                 LearningResourceId = resource.Id,
                 Title = $"Study: {resource.Title}",
-                Notes = "Auto-created from current recommendations.",
+                Notes = AutoCreatedFromRecommendationsNote,
                 EstimatedMinutes = estimates[i],
                 Priority = 3,
                 DeadlineUtc = deadlines[i],
@@ -203,21 +211,53 @@ public class StudyTaskService : IStudyTaskService
         await _dbContext.SaveChangesAsync(ct);
     }
 
+    public async Task SyncRecommendationLinkedTasksAsync(
+        string userId,
+        IReadOnlyList<Guid> activeResourceIds,
+        CancellationToken ct = default)
+    {
+        await EnsureUserExistsAsync(userId, ct);
+
+        var activeSet = activeResourceIds.Distinct().ToHashSet();
+        var stalePending = await _dbContext.StudyTasks
+            .Where(t =>
+                t.UserId == userId
+                && t.Status == DomainTaskStatus.Pending
+                && t.LearningResourceId.HasValue
+                && t.Notes == AutoCreatedFromRecommendationsNote)
+            .ToListAsync(ct);
+
+        var removed = stalePending.Where(t => !activeSet.Contains(t.LearningResourceId!.Value)).ToList();
+        if (removed.Count == 0)
+            return;
+
+        _dbContext.StudyTasks.RemoveRange(removed);
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
     public async Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default)
     {
         await EnsureUserExistsAsync(userId, ct);
 
-        var pending = await _dbContext.StudyTasks
-            .Where(t => t.UserId == userId && t.LearningResourceId == learningResourceId && t.Status == DomainTaskStatus.Pending)
-            .OrderBy(t => t.DeadlineUtc)
-            .FirstOrDefaultAsync(ct);
+        var openTasks = await _dbContext.StudyTasks
+            .Where(t =>
+                t.UserId == userId
+                && t.LearningResourceId == learningResourceId
+                && (t.Status == DomainTaskStatus.Pending || t.Status == DomainTaskStatus.Overdue))
+            .ToListAsync(ct);
 
-        if (pending is null)
+        if (openTasks.Count == 0)
             return;
 
-        pending.Status = DomainTaskStatus.Completed;
-        pending.UpdatedAtUtc = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        foreach (var task in openTasks)
+        {
+            task.Status = DomainTaskStatus.Completed;
+            task.UpdatedAtUtc = now;
+        }
+
         await _dbContext.SaveChangesAsync(ct);
+        await RefillAutoTasksFromCurrentRecommendationsAsync(userId, ct);
     }
 
     public async Task DeleteAsync(string userId, Guid taskId, CancellationToken ct = default)
@@ -263,6 +303,55 @@ public class StudyTaskService : IStudyTaskService
         var resource = await _learningResourceRepo.GetByIdAsync(learningResourceId, ct);
         if (resource is null)
             throw new LearningResourceNotFoundException(learningResourceId);
+    }
+
+    private async Task RefillAutoTasksFromCurrentRecommendationsAsync(string userId, CancellationToken ct)
+    {
+        var openLinkedCount = await _dbContext.StudyTasks
+            .AsNoTracking()
+            .Where(t =>
+                t.UserId == userId
+                && t.LearningResourceId.HasValue
+                && (t.Status == DomainTaskStatus.Pending || t.Status == DomainTaskStatus.Overdue))
+            .CountAsync(ct);
+        if (openLinkedCount >= AutoTaskPipelineTarget)
+            return;
+
+        var openLinkedResourceIds = await _dbContext.StudyTasks
+            .AsNoTracking()
+            .Where(t =>
+                t.UserId == userId
+                && t.LearningResourceId.HasValue
+                && (t.Status == DomainTaskStatus.Pending || t.Status == DomainTaskStatus.Overdue))
+            .Select(t => t.LearningResourceId!.Value)
+            .ToListAsync(ct);
+
+        var completedResourceIds = await _dbContext.UserInteractions
+            .AsNoTracking()
+            .Where(i => i.UserId == userId && i.InteractionType == EducationalCompanion.Domain.Enums.InteractionType.Completed)
+            .Select(i => i.LearningResourceId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var candidates = await _dbContext.Recommendations
+            .AsNoTracking()
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.Score)
+            .ThenBy(r => r.CreatedAtUtc)
+            .Select(r => r.LearningResourceId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var excluded = openLinkedResourceIds.Concat(completedResourceIds).ToHashSet();
+        var refillIds = candidates
+            .Where(id => !excluded.Contains(id))
+            .Take(AutoTaskPipelineTarget - openLinkedCount)
+            .ToList();
+
+        if (refillIds.Count == 0)
+            return;
+
+        await EnsurePendingTasksForRecommendationsAsync(userId, refillIds, ct);
     }
 
     private static StudyTaskResponse Map(StudyTask task, IReadOnlyDictionary<Guid, LearningResource> resources)

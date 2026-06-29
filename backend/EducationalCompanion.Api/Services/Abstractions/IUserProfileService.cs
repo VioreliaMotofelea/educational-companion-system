@@ -8,4 +8,5 @@ public interface IUserProfileService
     Task<UserProfileResponse> GetProfileByUserIdAsync(string userId, CancellationToken ct);
     Task<UserPreferencesResponse> GetPreferencesByUserIdAsync(string userId, CancellationToken ct);
     Task UpdatePreferencesAsync(string userId, UpdateUserPreferencesRequest request, CancellationToken ct);
+    Task UpdateStudySettingsAsync(string userId, UpdateUserStudySettingsRequest request, CancellationToken ct);
 }

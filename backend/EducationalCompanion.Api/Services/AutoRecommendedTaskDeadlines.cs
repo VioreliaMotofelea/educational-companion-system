@@ -1,26 +1,13 @@
 namespace EducationalCompanion.Api.Services;
 
-/// <summary>
-/// Computes deadlines for tasks auto-created from recommendations, using the learner's
-/// daily study budget. Calendar-day boundaries follow <paramref name="deadlineTimeZone"/> when set,
-/// otherwise UTC (matches empty frontend <c>VITE_CALENDAR_TIMEZONE</c> / local-browser behaviour only on the client).
-/// </summary>
 public static class AutoRecommendedTaskDeadlines
 {
-    /// <summary>
-    /// End of the UTC calendar day that is <paramref name="dayOffsetFromTomorrow"/> full days after
-    /// tomorrow in UTC (offset 0 = end of tomorrow UTC).
-    /// </summary>
     private static DateTime EndOfUtcCalendarDayAfterTomorrow(DateTime utcNow, int dayOffsetFromTomorrow)
     {
         var startOfTargetDay = utcNow.Date.AddDays(2 + dayOffsetFromTomorrow);
         return startOfTargetDay.AddTicks(-1);
     }
 
-    /// <summary>
-    /// End of the calendar day in <paramref name="deadlineTimeZone"/> that is <paramref name="dayOffsetFromTomorrow"/>
-    /// full days after "tomorrow" in that zone (offset 0 = end of tomorrow local). Returned as UTC.
-    /// </summary>
     public static DateTime EndOfCalendarDayAfterTomorrow(DateTime utcNow, TimeZoneInfo? deadlineTimeZone, int dayOffsetFromTomorrow)
     {
         if (deadlineTimeZone is null)
@@ -35,15 +22,12 @@ public static class AutoRecommendedTaskDeadlines
         return TimeZoneInfo.ConvertTimeToUtc(endLocal, deadlineTimeZone);
     }
 
-    /// <param name="utcNow">Current instant (UTC).</param>
-    /// <param name="dailyAvailableMinutes">Learner budget; if &lt; 1, uses sequential deadlines (see below).</param>
-    /// <param name="estimatedMinutesPerTaskInOrder">One estimate per task, same order as creation.</param>
-    /// <param name="deadlineTimeZone">When null, calendar days are UTC; when set, matches frontend fixed IANA zone.</param>
     public static IReadOnlyList<DateTime> ComputeDeadlinesUtc(
         DateTime utcNow,
         int dailyAvailableMinutes,
         IReadOnlyList<int> estimatedMinutesPerTaskInOrder,
-        TimeZoneInfo? deadlineTimeZone = null)
+        TimeZoneInfo? deadlineTimeZone = null,
+        int minimumPlanningDays = 7)
     {
         if (estimatedMinutesPerTaskInOrder.Count == 0)
             return [];
@@ -90,6 +74,18 @@ public static class AutoRecommendedTaskDeadlines
             }
         }
 
-        return deadlines;
+        if (deadlines.Count <= 1 || minimumPlanningDays <= 1)
+            return deadlines;
+
+        var stretched = new List<DateTime>(deadlines.Count);
+        var maxIndex = deadlines.Count - 1;
+        for (var i = 0; i < deadlines.Count; i++)
+        {
+            var stretchedOffset = (int)Math.Round(i * (minimumPlanningDays - 1d) / maxIndex);
+            var stretchedDeadline = EndOfCalendarDayAfterTomorrow(utcNow, deadlineTimeZone, stretchedOffset);
+            stretched.Add(deadlines[i] > stretchedDeadline ? deadlines[i] : stretchedDeadline);
+        }
+
+        return stretched;
     }
 }

@@ -1,3 +1,4 @@
+using EducationalCompanion.Api.Dtos.Schedule;
 using EducationalCompanion.Api.Dtos.Analytics;
 using EducationalCompanion.Api.Dtos.LearningResources;
 using EducationalCompanion.Api.Dtos.Mastery;
@@ -24,6 +25,7 @@ public class UsersController : ControllerBase
     private readonly IAiGenerationService _aiGenerationService;
     private readonly IStudyTaskService _studyTaskService;
     private readonly ILearningResourceService _learningResourceService;
+    private readonly IStudyScheduleService _studyScheduleService;
 
     public UsersController(
         IUserInteractionService interactionService,
@@ -32,7 +34,8 @@ public class UsersController : ControllerBase
         IRecommendationService recommendationService,
         IAiGenerationService aiGenerationService,
         IStudyTaskService studyTaskService,
-        ILearningResourceService learningResourceService)
+        ILearningResourceService learningResourceService,
+        IStudyScheduleService studyScheduleService)
     {
         _interactionService = interactionService;
         _userProfileService = userProfileService;
@@ -41,6 +44,7 @@ public class UsersController : ControllerBase
         _aiGenerationService = aiGenerationService;
         _studyTaskService = studyTaskService;
         _learningResourceService = learningResourceService;
+        _studyScheduleService = studyScheduleService;
     }
 
     // Get full profile including preferences (for dashboard, AI aggregation)
@@ -67,6 +71,14 @@ public class UsersController : ControllerBase
     {
         EnsureCallerMatchesUserId(id);
         await _userProfileService.UpdatePreferencesAsync(id, request, ct);
+        return NoContent();
+    }
+
+    [HttpPut("{id}/study-settings")]
+    public async Task<IActionResult> UpdateStudySettings(string id, UpdateUserStudySettingsRequest request, CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        await _userProfileService.UpdateStudySettingsAsync(id, request, ct);
         return NoContent();
     }
 
@@ -160,6 +172,25 @@ public class UsersController : ControllerBase
         EnsureCallerMatchesUserId(id);
         var tasks = await _studyTaskService.GetByUserAsync(id, ct);
         return Ok(tasks);
+    }
+
+    [HttpGet("{id}/schedule/today")]
+    public async Task<ActionResult<StudyDayScheduleResponse>> GetTodaySchedule(
+        string id,
+        [FromQuery] string? date,
+        CancellationToken ct)
+    {
+        EnsureCallerMatchesUserId(id);
+        DateOnly? scheduleDate = null;
+        if (!string.IsNullOrWhiteSpace(date))
+        {
+            if (!DateOnly.TryParse(date, out var parsed))
+                throw new ValidationException("Invalid date. Use yyyy-MM-dd.");
+            scheduleDate = parsed;
+        }
+
+        var schedule = await _studyScheduleService.GetTodayScheduleAsync(id, scheduleDate, ct);
+        return Ok(schedule);
     }
 
     [HttpPost("{id}/tasks")]

@@ -37,6 +37,9 @@ public sealed class RecordingStudyTaskService : IStudyTaskService
         return Task.CompletedTask;
     }
 
+    public Task SyncRecommendationLinkedTasksAsync(string userId, IReadOnlyList<Guid> activeResourceIds, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
     public Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
         Task.CompletedTask;
 }

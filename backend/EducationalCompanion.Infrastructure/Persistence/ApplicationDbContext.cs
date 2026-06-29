@@ -1,4 +1,5 @@
-﻿using EducationalCompanion.Domain.Entities;
+﻿using EducationalCompanion.Domain.Common;
+using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -49,5 +50,18 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
 
         // Apply all IEntityTypeConfiguration<T>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
+        {
+            if (entry.State == EntityState.Added)
+                entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+            else if (entry.State == EntityState.Modified)
+                entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }
