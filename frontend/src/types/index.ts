@@ -4,3 +4,4 @@ export * from "./analytics";
 export * from "./mastery";
 export * from "./interactions";
 export * from "./task";
+export * from "./schedule";

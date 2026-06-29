@@ -10,6 +10,16 @@
     "notes": "Primary thesis demo: rich course reading on normalization, BCNF, FDs, anomalies. Use Alex; Bianca blocked."
   },
   {
+    "file": "sql-joins-seminar-worksheet.md",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000065",
+    "suggestedResourceTitle": "SQL Joins Seminar Worksheet",
+    "topic": "Databases",
+    "extractionMethod": "MarkdownText",
+    "visibilityDemo": "CourseOnly",
+    "recommendedPreset": "alex-065",
+    "notes": "Seminar 4 worksheet: INNER/LEFT JOIN, GROUP BY, cardinality, tracing. Pairs with normalization reading (066); Alex only."
+  },
+  {
     "file": "programming-control-flow-practice.txt",
     "suggestedResourceId": "00000000-0000-4000-8000-000000000001",
     "suggestedResourceTitle": "Programming Fundamentals Learning Unit 001",

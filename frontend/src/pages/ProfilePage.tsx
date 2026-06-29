@@ -7,9 +7,9 @@ import { useAnalytics } from "../hooks/useAnalytics";
 import { useMastery } from "../hooks/useMastery";
 import { useInteractions } from "../hooks/useInteractions";
 import { useResources } from "../hooks/useResources";
-import { updateUserPreferences } from "../services/api";
+import { updateUserPreferences, updateUserStudySettings } from "../services/api";
 import type { UserPreferences } from "../types";
-import { formatUtcDateTime } from "../utils/formatDate";
+import { formatAppDateTime } from "../utils/formatDate";
 
 function toNullIfEmpty(value: string) {
   const trimmed = value.trim();
@@ -42,9 +42,13 @@ export default function ProfilePage() {
   const [preferredDifficulty, setPreferredDifficulty] = useState<string>("");
   const [preferredContentTypesCsv, setPreferredContentTypesCsv] = useState<string>("");
   const [preferredTopicsCsv, setPreferredTopicsCsv] = useState<string>("");
+  const [dailyAvailableMinutes, setDailyAvailableMinutes] = useState<string>("60");
   const [saving, setSaving] = useState(false);
+  const [savingStudySettings, setSavingStudySettings] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState<string | null>(null);
+  const [studySaveError, setStudySaveError] = useState<string | null>(null);
+  const [studySaveOk, setStudySaveOk] = useState<string | null>(null);
 
   useEffect(() => {
     setSaveOk(null);
@@ -55,7 +59,8 @@ export default function ProfilePage() {
     );
     setPreferredContentTypesCsv(initialPrefs?.preferredContentTypesCsv ?? "");
     setPreferredTopicsCsv(initialPrefs?.preferredTopicsCsv ?? "");
-  }, [initialPrefs]);
+    setDailyAvailableMinutes(String(user?.dailyAvailableMinutes ?? 60));
+  }, [initialPrefs, user?.dailyAvailableMinutes]);
 
   const diffValue = useMemo(() => {
     if (preferredDifficulty.trim() === "") return null;
@@ -82,7 +87,7 @@ export default function ProfilePage() {
 
     try {
       await updateUserPreferences(userId, payload);
-      setSaveOk("Saved preferences.");
+      setSaveOk("Saved.");
       refresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save preferences.");
@@ -91,190 +96,232 @@ export default function ProfilePage() {
     }
   };
 
+  const onSaveStudySettings = async (e: FormEvent) => {
+    e.preventDefault();
+    if (savingStudySettings) return;
+
+    const parsed = Number(dailyAvailableMinutes);
+    if (!Number.isFinite(parsed) || parsed < 15 || parsed > 600) {
+      setStudySaveError("Use 15–600 minutes.");
+      return;
+    }
+
+    setSavingStudySettings(true);
+    setStudySaveError(null);
+    setStudySaveOk(null);
+
+    try {
+      await updateUserStudySettings(userId, { dailyAvailableMinutes: parsed });
+      setStudySaveOk("Saved.");
+      refresh();
+      window.dispatchEvent(new Event("task-updated"));
+    } catch (err) {
+      setStudySaveError(err instanceof Error ? err.message : "Could not save study settings.");
+    } finally {
+      setSavingStudySettings(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
-        <h2 style={{ margin: 0 }}>User Profile</h2>
-        <p style={{ margin: 0, color: "var(--muted)" }}>{loading ? "Loading..." : `Level ${user?.level ?? "-"}`}</p>
+        <div>
+          <h2 style={{ margin: 0 }}>Profile</h2>
+          <p style={{ margin: "4px 0 0 0", color: "var(--muted)", fontSize: 14 }}>
+            Study budget, content preferences, and your learning progress.
+          </p>
+        </div>
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 14, flexShrink: 0 }}>
+          {loading ? "…" : `Level ${user?.level ?? "—"}`}
+        </p>
       </div>
 
       {error ? (
-        <div style={{ marginTop: 14, border: "1px solid rgba(239, 68, 68, 0.6)", background: "rgba(239, 68, 68, 0.08)", borderRadius: "var(--radius-md)", padding: 16 }}>
+        <div
+          style={{
+            marginTop: 14,
+            border: "1px solid rgba(239, 68, 68, 0.6)",
+            background: "rgba(239, 68, 68, 0.08)",
+            borderRadius: "var(--radius-md)",
+            padding: 16,
+          }}
+        >
           <p style={{ margin: 0, color: "rgba(239, 68, 68, 0.95)" }}>{error}</p>
         </div>
       ) : null}
 
-      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 1fr)", gap: 16, alignItems: "start" }}>
-        <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Preferences</h3>
-          <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              Preferred difficulty (1-5){" "}
-              <select
-                value={preferredDifficulty}
-                onChange={(e) => setPreferredDifficulty(e.target.value)}
-                style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", border: `1px solid var(--border-strong)`, background: "rgba(255,255,255,0.02)", color: "var(--text)" }}
-              >
-                <option value="">Auto / none</option>
-                <option value="1">1 - Beginner</option>
-                <option value="2">2</option>
-                <option value="3">3 - Intermediate</option>
-                <option value="4">4</option>
-                <option value="5">5 - Advanced</option>
-              </select>
-            </label>
+      <div className="profile-page">
+        <section className="profile-card">
+          <h3>Study & preferences</h3>
+          <p className="profile-card-sub">Controls your daily plan, calendar deadlines, and recommendation tuning.</p>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              Content you prefer (comma-separated: Article, Video, Quiz)
-              <input
-                value={preferredContentTypesCsv}
-                onChange={(e) => setPreferredContentTypesCsv(e.target.value)}
-                placeholder="Article,Video"
-                style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", border: `1px solid var(--border-strong)`, background: "rgba(255,255,255,0.02)", color: "var(--text)" }}
-              />
-            </label>
-
-            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              Topics you enjoy (comma-separated)
-              <input
-                value={preferredTopicsCsv}
-                onChange={(e) => setPreferredTopicsCsv(e.target.value)}
-                placeholder="Mathematics,Algorithms"
-                style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", border: `1px solid var(--border-strong)`, background: "rgba(255,255,255,0.02)", color: "var(--text)" }}
-              />
-            </label>
-
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6 }}>
-              <button
-                type="submit"
-                disabled={saving}
-                style={{
-                  background: "var(--color-ai-600)",
-                  color: "white",
-                  border: "none",
-                  padding: "10px 14px",
-                  borderRadius: "var(--radius-md)",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  opacity: saving ? 0.7 : 1,
-                }}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-              {saveOk ? <span style={{ color: "rgba(34, 197, 94, 0.95)" }}>{saveOk}</span> : null}
-              {saveError ? <span style={{ color: "rgba(239, 68, 68, 0.95)" }}>{saveError}</span> : null}
-            </div>
-          </form>
-        </section>
-
-        <section style={{ border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Difficulty level</h3>
-          {mastery.loading ? (
-            <p style={{ marginTop: 12, color: "var(--muted)" }}>Loading mastery...</p>
-          ) : mastery.error ? (
-            <p style={{ marginTop: 12, color: "rgba(239, 68, 68, 0.95)" }}>{mastery.error}</p>
-          ) : mastery.data ? (
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-              <div>
-                Suggested difficulty:{" "}
-                <b style={{ color: "var(--color-ai-600)" }}>{mastery.data.suggestedDifficulty}</b>
-              </div>
-              {mastery.data.suggestedDifficultyReason ? (
-                <div style={{ color: "var(--muted)" }}>
-                  Motivation: {mastery.data.suggestedDifficultyReason}
+          <div className="profile-settings-split">
+            <div>
+              <h4 style={{ margin: "0 0 10px 0", fontSize: 14, fontWeight: 700 }}>Daily study budget</h4>
+              <form onSubmit={onSaveStudySettings} className="profile-form">
+                <label>
+                  Minutes per day (15–600)
+                  <input
+                    type="number"
+                    min={15}
+                    max={600}
+                    value={dailyAvailableMinutes}
+                    onChange={(e) => setDailyAvailableMinutes(e.target.value)}
+                  />
+                </label>
+                <div className="profile-form-actions">
+                  <button type="submit" disabled={savingStudySettings} className="profile-btn-primary">
+                    {savingStudySettings ? "Saving…" : "Save budget"}
+                  </button>
+                  {studySaveOk ? <span style={{ color: "rgba(34, 197, 94, 0.95)", fontSize: 13 }}>{studySaveOk}</span> : null}
+                  {studySaveError ? (
+                    <span style={{ color: "rgba(239, 68, 68, 0.95)", fontSize: 13 }}>{studySaveError}</span>
+                  ) : null}
                 </div>
-              ) : (
-                <div style={{ color: "var(--muted)" }}>No reason provided.</div>
-              )}
+              </form>
             </div>
-          ) : (
-            <p style={{ marginTop: 12, color: "var(--muted)" }}>No mastery data.</p>
-          )}
 
-          <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-            <h3 style={{ marginTop: 0, fontSize: 16 }}>Stats & behavior</h3>
-            {analytics ? (
-              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>Current level: <b style={{ color: "var(--color-progress-600)" }}>{analytics.kpis.currentLevel}</b></div>
-                <div>Completion: <b>{analytics.kpis.completionRatePercent.toFixed(0)}%</b></div>
-                <div style={{ color: "var(--muted)" }}>
-                  {analytics.summary.summaryText ? analytics.summary.summaryText : "No summary yet. Complete resources to generate insights."}
+            <div>
+              <h4 style={{ margin: "0 0 10px 0", fontSize: 14, fontWeight: 700 }}>Content preferences</h4>
+              <form onSubmit={onSave} className="profile-form">
+                <label>
+                  Preferred difficulty
+                  <select value={preferredDifficulty} onChange={(e) => setPreferredDifficulty(e.target.value)}>
+                    <option value="">Auto</option>
+                    <option value="1">1 — Beginner</option>
+                    <option value="2">2</option>
+                    <option value="3">3 — Intermediate</option>
+                    <option value="4">4</option>
+                    <option value="5">5 — Advanced</option>
+                  </select>
+                </label>
+
+                <label>
+                  Preferred formats
+                  <input
+                    value={preferredContentTypesCsv}
+                    onChange={(e) => setPreferredContentTypesCsv(e.target.value)}
+                    placeholder="Article, Video, Quiz"
+                  />
+                </label>
+
+                <label>
+                  Preferred topics
+                  <input
+                    value={preferredTopicsCsv}
+                    onChange={(e) => setPreferredTopicsCsv(e.target.value)}
+                    placeholder="Python, Databases"
+                  />
+                </label>
+
+                <div className="profile-form-actions">
+                  <button type="submit" disabled={saving} className="profile-btn-primary">
+                    {saving ? "Saving…" : "Save preferences"}
+                  </button>
+                  {saveOk ? <span style={{ color: "rgba(34, 197, 94, 0.95)", fontSize: 13 }}>{saveOk}</span> : null}
+                  {saveError ? <span style={{ color: "rgba(239, 68, 68, 0.95)", fontSize: 13 }}>{saveError}</span> : null}
                 </div>
-              </div>
-            ) : (
-              <p style={{ marginTop: 10, color: "var(--muted)" }}>Loading analytics...</p>
-            )}
-
-            <div style={{ marginTop: 18 }}>
-              <h4 style={{ margin: 0, fontSize: 14 }}>Recent activity</h4>
-
-              {interactions.loading ? (
-                <p style={{ marginTop: 10, color: "var(--muted)" }}>Loading recent activity...</p>
-              ) : interactions.error ? (
-                <p style={{ marginTop: 10, color: "rgba(239, 68, 68, 0.95)" }}>{interactions.error}</p>
-              ) : interactions.data.length === 0 ? (
-                <p style={{ marginTop: 10, color: "var(--muted)" }}>No interactions yet.</p>
-              ) : (
-                <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0 0", display: "flex", flexDirection: "column", gap: 10 }}>
-                  {interactions.data.map((it) => {
-                    const typeColor =
-                      it.interactionType === "Completed"
-                        ? "var(--color-progress-600)"
-                        : it.interactionType === "Rated"
-                          ? "var(--color-recommend-600)"
-                          : it.interactionType === "Viewed"
-                            ? "var(--color-ai-600)"
-                            : "var(--muted)";
-
-                    return (
-                      <li
-                        key={it.id}
-                        style={{
-                          border: "1px solid var(--border)",
-                          background: "rgba(255,255,255,0.03)",
-                          borderRadius: "var(--radius-md)",
-                          padding: 12,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                          <div>
-                            <div style={{ fontWeight: 900, color: typeColor }}>{it.interactionType}</div>
-                            <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                              Resource:{" "}
-                              <b>
-                                {resourceTitleById.get(it.learningResourceId)?.title ??
-                                  truncateId(it.learningResourceId)}
-                              </b>
-                              {resourceTitleById.get(it.learningResourceId)?.topic ? (
-                                <span style={{ color: "var(--muted)" }}>
-                                  {" "}
-                                  • {resourceTitleById.get(it.learningResourceId)?.topic}
-                                </span>
-                              ) : null}
-                            </div>
-                            {it.rating != null ? (
-                              <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                                Rating: <b>{it.rating}</b>/5
-                              </div>
-                            ) : null}
-                            {it.timeSpentMinutes != null ? (
-                              <div style={{ color: "var(--muted)", marginTop: 4 }}>
-                                Time spent: <b>{it.timeSpentMinutes}</b> min
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div style={{ textAlign: "right", color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>
-                            {formatUtcDateTime(it.createdAtUtc)}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              </form>
             </div>
           </div>
         </section>
+
+        <div className="profile-insights-grid">
+          <section className="profile-card">
+            <h3>Learning progress</h3>
+            <p className="profile-card-sub">Suggested level from your activity and completion.</p>
+
+            {mastery.loading ? (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>Loading…</p>
+            ) : mastery.error ? (
+              <p style={{ margin: 0, color: "rgba(239, 68, 68, 0.95)", fontSize: 13 }}>{mastery.error}</p>
+            ) : (
+              <>
+                <div className="profile-stat-row">
+                  <div className="profile-stat">
+                    <div className="profile-stat-label">Suggested level</div>
+                    <div className="profile-stat-value" style={{ color: "var(--color-ai-600)" }}>
+                      {mastery.data?.suggestedDifficulty ?? "—"}
+                    </div>
+                  </div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-label">Current level</div>
+                    <div className="profile-stat-value" style={{ color: "var(--color-progress-600)" }}>
+                      {analytics?.kpis.currentLevel ?? user?.level ?? "—"}
+                    </div>
+                  </div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-label">Completion</div>
+                    <div className="profile-stat-value">
+                      {analytics ? `${analytics.kpis.completionRatePercent.toFixed(0)}%` : "—"}
+                    </div>
+                  </div>
+                </div>
+                {mastery.data?.suggestedDifficultyReason ? (
+                  <p style={{ margin: "14px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>
+                    {mastery.data.suggestedDifficultyReason}
+                  </p>
+                ) : null}
+                {analytics?.summary.summaryText ? (
+                  <p style={{ margin: "10px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>
+                    {analytics.summary.summaryText}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </section>
+
+          <section className="profile-card">
+            <h3>Recent activity</h3>
+            <p className="profile-card-sub">Latest interactions that feed recommendations.</p>
+
+            {interactions.loading ? (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>Loading…</p>
+            ) : interactions.error ? (
+              <p style={{ margin: 0, color: "rgba(239, 68, 68, 0.95)", fontSize: 13 }}>{interactions.error}</p>
+            ) : interactions.data.length === 0 ? (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>No interactions yet.</p>
+            ) : (
+              <ul className="profile-activity-list">
+                {interactions.data.map((it) => {
+                  const typeColor =
+                    it.interactionType === "Completed"
+                      ? "var(--color-progress-600)"
+                      : it.interactionType === "Rated"
+                        ? "var(--color-recommend-600)"
+                        : it.interactionType === "Viewed"
+                          ? "var(--color-ai-600)"
+                          : "var(--muted)";
+
+                  return (
+                    <li key={it.id} className="profile-activity-item">
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, color: typeColor }}>{it.interactionType}</div>
+                          <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                            {resourceTitleById.get(it.learningResourceId)?.title ??
+                              truncateId(it.learningResourceId)}
+                            {resourceTitleById.get(it.learningResourceId)?.topic ? (
+                              <span> · {resourceTitleById.get(it.learningResourceId)?.topic}</span>
+                            ) : null}
+                          </div>
+                          {it.rating != null ? (
+                            <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                              Rating: <b>{it.rating}</b>/5
+                            </div>
+                          ) : null}
+                        </div>
+                        <div style={{ textAlign: "right", color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>
+                          {formatAppDateTime(it.createdAtUtc, { includeSeconds: true })}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
     </AppLayout>
   );

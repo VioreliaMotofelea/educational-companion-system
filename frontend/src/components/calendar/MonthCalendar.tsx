@@ -1,6 +1,6 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { CALENDAR_DEADLINE_TIMEZONE, calendarTimezoneLabel } from "../../constants/calendarTime";
+import { CALENDAR_DEADLINE_TIMEZONE } from "../../constants/calendarTime";
 import { UI_LOCALE } from "../../constants/uiLocale";
 import type { StudyTask } from "../../types";
 import {
@@ -18,7 +18,6 @@ import { humanizeResourceTitle } from "../../utils/recommendationUtils";
 type Props = {
   tasks: StudyTask[];
   loading?: boolean;
-  signedInEmail?: string | null;
 };
 
 function statusColor(status: StudyTask["status"]): string {
@@ -32,9 +31,8 @@ function taskLabel(task: StudyTask): string {
   return humanizeResourceTitle(raw);
 }
 
-export default function MonthCalendar({ tasks, loading = false, signedInEmail }: Props) {
+export default function MonthCalendar({ tasks, loading = false }: Props) {
   const tz = CALENDAR_DEADLINE_TIMEZONE;
-  const timezoneLabel = calendarTimezoneLabel(tz);
   const initialCalendar = useMemo(() => currentCalendarDate(tz), [tz]);
 
   const [year, setYear] = useState(initialCalendar.year);
@@ -116,25 +114,13 @@ export default function MonthCalendar({ tasks, loading = false, signedInEmail }:
         </div>
       </div>
 
-      {!loading ? (
+      {!loading && tasks.length === 0 ? (
         <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
-          Signed in as <strong style={{ color: "var(--text)" }}>{signedInEmail ?? "—"}</strong>.
-          {tasks.length === 0 ? (
-            <>
-              {" "}
-              No task deadlines yet. Open{" "}
-              <Link to="/tasks" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
-                Tasks
-              </Link>{" "}
-              to review your study plan, or generate recommendations from the dashboard to create new tasks.
-            </>
-          ) : (
-            <>
-              {" "}
-              <strong>{tasks.length}</strong> task{tasks.length === 1 ? "" : "s"} with deadlines shown in{" "}
-              <strong>{timezoneLabel}</strong>.
-            </>
-          )}
+          No deadlines yet.{" "}
+          <Link to="/tasks" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
+            Open Tasks
+          </Link>{" "}
+          or regenerate recommendations.
         </p>
       ) : null}
 

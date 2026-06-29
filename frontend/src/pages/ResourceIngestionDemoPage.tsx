@@ -355,6 +355,7 @@ export default function ResourceIngestionDemoPage() {
                 >
                   Drag and drop a file here, or click to choose one.
                   <span className="ingestion-demo__dropzone-hint">
+                    {suggestedFile ? `Suggested: ${suggestedFile} · ` : ""}
                     Supported formats: {SUPPORTED_FILE_TYPES}
                   </span>
                 </div>

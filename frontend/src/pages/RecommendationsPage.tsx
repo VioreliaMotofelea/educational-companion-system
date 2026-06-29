@@ -1,11 +1,12 @@
 import AppLayout from "../components/layout/AppLayout";
 import RecommendationCard from "../components/recommendations/RecommendationCard";
+import RegenerateRecommendationsButton from "../components/recommendations/RegenerateRecommendationsButton";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useRecommendations } from "../hooks/useRecommendations";
 
 export default function RecommendationsPage() {
   const { userId } = useCurrentUser();
-  const { data, loading, error, refetch } = useRecommendations(userId, 10);
+  const { data, loading, error, regenerate, regenerating } = useRecommendations(userId, 10);
 
   return (
     <AppLayout>
@@ -13,12 +14,17 @@ export default function RecommendationsPage() {
         <div>
           <h2 style={{ margin: 0 }}>Recommendations</h2>
           <p style={{ margin: "6px 0 0 0", color: "var(--muted)", maxWidth: 560, lineHeight: 1.5 }}>
-            Curated next steps based on your progress. Open any card to start studying, mark completion, and leave feedback so future picks stay relevant.
+            Curated next steps based on your progress. Completed items leave this list automatically; regenerate when you want a fresh batch from the AI service.
           </p>
         </div>
-        <p style={{ margin: 0, color: "var(--muted)" }}>
-          {loading ? "Loading…" : error ? "—" : `${data.length} suggestion${data.length === 1 ? "" : "s"}`}
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <p style={{ margin: 0, color: "var(--muted)" }}>
+            {loading ? "Loading…" : error ? "—" : regenerating ? "Updating…" : `${data.length} suggestion${data.length === 1 ? "" : "s"}`}
+          </p>
+          {userId ? (
+            <RegenerateRecommendationsButton onClick={() => void regenerate()} disabled={loading || regenerating} />
+          ) : null}
+        </div>
       </div>
 
       {loading ? (
@@ -34,44 +40,18 @@ export default function RecommendationsPage() {
           }}
         >
           <p style={{ margin: 0, color: "rgba(239, 68, 68, 0.95)" }}>{error}</p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            style={{
-              marginTop: 12,
-              background: "var(--color-ai-600)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Try again
-          </button>
+          <div style={{ marginTop: 12 }}>
+            <RegenerateRecommendationsButton onClick={() => void regenerate()} disabled={regenerating} />
+          </div>
         </div>
       ) : data.length === 0 ? (
         <div style={{ marginTop: 16, border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 20 }}>
           <p style={{ margin: 0, color: "var(--muted)", lineHeight: 1.55 }}>
-            There are no suggestions yet. Keep learning, or refresh — the assistant may need a moment to build your list.
+            No open suggestions right now. You may have finished everything in the current batch, or the catalogue has no new matches. Regenerate to ask the assistant for a new set based on your latest progress.
           </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            style={{
-              marginTop: 14,
-              background: "var(--color-ai-600)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Refresh suggestions
-          </button>
+          <div style={{ marginTop: 14 }}>
+            <RegenerateRecommendationsButton onClick={() => void regenerate()} disabled={regenerating} />
+          </div>
         </div>
       ) : (
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column" }}>

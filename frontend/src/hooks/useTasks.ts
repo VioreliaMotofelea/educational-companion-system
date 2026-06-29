@@ -7,6 +7,7 @@ type UseTasksState = {
   tasks: StudyTask[];
   loading: boolean;
   error: string | null;
+  lastUpdatedAt: number | null;
 };
 
 export function useTasks(userId: string) {
@@ -16,10 +17,23 @@ export function useTasks(userId: string) {
     tasks: [],
     loading: true,
     error: null,
+    lastUpdatedAt: null,
   });
 
   useEffect(() => {
     let cancelled = false;
+
+    if (!userId) {
+      setState({ userId: null, tasks: [], loading: false, error: null, lastUpdatedAt: null });
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      userId,
+      loading: prev.tasks.length === 0,
+      error: null,
+    }));
 
     getUserTasks(userId)
       .then((tasks) => {
@@ -29,16 +43,18 @@ export function useTasks(userId: string) {
           tasks,
           loading: false,
           error: null,
+          lastUpdatedAt: Date.now(),
         });
       })
       .catch(() => {
         if (cancelled) return;
-        setState({
+        setState((prev) => ({
           userId,
-          tasks: [],
+          tasks: prev.tasks.length === 0 ? [] : prev.tasks,
           loading: false,
           error: "Could not load tasks.",
-        });
+          lastUpdatedAt: prev.lastUpdatedAt,
+        }));
       });
 
     return () => {
@@ -47,9 +63,13 @@ export function useTasks(userId: string) {
   }, [userId, refreshTick]);
 
   useEffect(() => {
-    const onInteractionUpdated = () => setRefreshTick((x) => x + 1);
-    window.addEventListener("interaction-updated", onInteractionUpdated);
-    return () => window.removeEventListener("interaction-updated", onInteractionUpdated);
+    const onRefresh = () => setRefreshTick((x) => x + 1);
+    window.addEventListener("interaction-updated", onRefresh);
+    window.addEventListener("task-updated", onRefresh);
+    return () => {
+      window.removeEventListener("interaction-updated", onRefresh);
+      window.removeEventListener("task-updated", onRefresh);
+    };
   }, []);
 
   const refresh = () => setRefreshTick((x) => x + 1);
@@ -83,6 +103,7 @@ export function useTasks(userId: string) {
     tasks: state.userId === userId ? state.tasks : [],
     loading: state.userId !== userId || state.loading,
     error: state.userId === userId ? state.error : null,
+    lastUpdatedAt: state.userId === userId ? state.lastUpdatedAt : null,
     refresh,
     setTaskStatus,
     createTask,

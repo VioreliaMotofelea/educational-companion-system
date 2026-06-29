@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generateRecommendationsForUser, getRecommendations } from "../services/api";
 import type { Recommendation } from "../types";
 
+export const INTERACTION_UPDATED_EVENT = "interaction-updated";
+
 type UseRecommendationsState = {
   userId: string | null;
   data: Recommendation[];
@@ -9,8 +11,17 @@ type UseRecommendationsState = {
   error: string | null;
 };
 
+async function fetchRecommendations(userId: string, limit: number) {
+  return getRecommendations(userId, limit);
+}
+
+async function generateAndFetch(userId: string, limit: number) {
+  await generateRecommendationsForUser(userId);
+  return fetchRecommendations(userId, limit);
+}
+
 export function useRecommendations(userId: string, limit = 5) {
-  const [reloadKey, setReloadKey] = useState(0);
+  const [regenerating, setRegenerating] = useState(false);
   const [state, setState] = useState<UseRecommendationsState>({
     userId: null,
     data: [],
@@ -18,93 +29,135 @@ export function useRecommendations(userId: string, limit = 5) {
     error: null,
   });
 
-  const triedGenerateForLoadRef = useRef(false);
+  const autoGenerateOnEmptyRef = useRef(true);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
-  useEffect(() => {
-    let cancelled = false;
-    triedGenerateForLoadRef.current = false;
-
-    queueMicrotask(() => {
-      if (cancelled) return;
-
-      if (!userId) {
+  const loadRecommendations = useCallback(
+    async (options: { showLoading: boolean; autoGenerateIfEmpty: boolean }) => {
+      const activeUserId = userIdRef.current;
+      if (!activeUserId) {
         setState({ userId: null, data: [], loading: false, error: null });
         return;
       }
 
-      setState((prev) => ({
-        ...prev,
-        userId,
-        loading: true,
-        error: null,
-      }));
+      if (options.showLoading) {
+        setState((prev) => ({
+          ...prev,
+          userId: activeUserId,
+          loading: true,
+          error: null,
+        }));
+      }
 
-      const fail = (message: string) => {
-        if (cancelled) return;
-        setState({
-          userId,
-          data: [],
-          loading: false,
-          error: message,
-        });
-      };
+      try {
+        let data = await fetchRecommendations(activeUserId, limit);
 
-      const succeed = (data: Recommendation[]) => {
-        if (cancelled) return;
+        if (data.length === 0 && options.autoGenerateIfEmpty && autoGenerateOnEmptyRef.current) {
+          autoGenerateOnEmptyRef.current = false;
+          data = await generateAndFetch(activeUserId, limit);
+        }
+
+        if (userIdRef.current !== activeUserId) return;
+
         setState({
-          userId,
+          userId: activeUserId,
           data,
           loading: false,
           error: null,
         });
-      };
+      } catch (err) {
+        if (userIdRef.current !== activeUserId) return;
 
-      void (async () => {
-        try {
-          let data = await getRecommendations(userId, limit);
-          if (cancelled) return;
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Something went wrong while loading recommendations.";
 
-          if (data.length === 0 && !triedGenerateForLoadRef.current) {
-            triedGenerateForLoadRef.current = true;
-            try {
-              await generateRecommendationsForUser(userId);
-            } catch (genErr) {
-              fail(
-                genErr instanceof Error
-                  ? genErr.message
-                  : "We could not refresh your picks right now. Check your connection and try again.",
-              );
-              return;
-            }
-            data = await getRecommendations(userId, limit);
-            if (cancelled) return;
-          }
+        setState((prev) => ({
+          userId: activeUserId,
+          data: options.showLoading ? [] : prev.data,
+          loading: false,
+          error: message,
+        }));
+      }
+    },
+    [limit],
+  );
 
-          succeed(data);
-        } catch (err) {
-          if (cancelled) return;
-          fail(
-            err instanceof Error
-              ? err.message
-              : "Something went wrong while loading recommendations.",
-          );
-        }
-      })();
-    });
+  useEffect(() => {
+    autoGenerateOnEmptyRef.current = true;
 
-    return () => {
-      cancelled = true;
+    if (!userId) {
+      setState({ userId: null, data: [], loading: false, error: null });
+      return;
+    }
+
+    void loadRecommendations({ showLoading: true, autoGenerateIfEmpty: true });
+  }, [userId, limit, loadRecommendations]);
+
+  const silentRefresh = useCallback(async () => {
+    await loadRecommendations({ showLoading: false, autoGenerateIfEmpty: true });
+  }, [loadRecommendations]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const onInteractionUpdated = () => {
+      void silentRefresh();
     };
-  }, [userId, limit, reloadKey]);
+
+    window.addEventListener(INTERACTION_UPDATED_EVENT, onInteractionUpdated);
+    return () => {
+      window.removeEventListener(INTERACTION_UPDATED_EVENT, onInteractionUpdated);
+    };
+  }, [userId, silentRefresh]);
 
   const refetch = useCallback(() => {
-    setReloadKey((k) => k + 1);
-  }, []);
+    void silentRefresh();
+  }, [silentRefresh]);
+
+  const regenerate = useCallback(async () => {
+    if (!userId) return;
+
+    setRegenerating(true);
+    setState((prev) => ({
+      ...prev,
+      userId,
+      error: null,
+    }));
+
+    try {
+      const data = await generateAndFetch(userId, limit);
+      setState({
+        userId,
+        data,
+        loading: false,
+        error: null,
+      });
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        userId,
+        loading: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "We could not regenerate your recommendations. Check your connection and try again.",
+      }));
+    } finally {
+      setRegenerating(false);
+    }
+  }, [userId, limit]);
+
+  const isInitialLoading = state.userId === userId && state.loading && state.data.length === 0;
 
   return {
     data: state.userId === userId ? state.data : [],
-    loading: state.userId !== userId || state.loading,
+    loading: isInitialLoading,
     error: state.userId === userId ? state.error : null,
     refetch,
+    regenerate,
+    regenerating,
   };
 }

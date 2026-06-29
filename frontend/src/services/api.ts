@@ -3,6 +3,7 @@ import type {
   CreateInteractionRequest,
   Mastery,
   Recommendation,
+  StudyDaySchedule,
   StudyTask,
   UserInteraction,
   UserProfile,
@@ -183,6 +184,11 @@ export const getUserInteractions = (userId: string): Promise<UserInteraction[]> 
 export const getUserTasks = (userId: string): Promise<StudyTask[]> =>
   fetcher<StudyTask[]>(`${API_BASE}/users/${userId}/tasks`);
 
+export const getTodayStudySchedule = (userId: string, date?: string): Promise<StudyDaySchedule> => {
+  const query = date ? `?date=${encodeURIComponent(date)}` : "";
+  return fetcher<StudyDaySchedule>(`${API_BASE}/users/${userId}/schedule/today${query}`);
+};
+
 export const updateUserTaskStatus = (
   userId: string,
   taskId: string,
@@ -246,6 +252,24 @@ export const updateUserPreferences = (
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+  });
+
+export type UpdateUserStudySettingsRequest = {
+  dailyAvailableMinutes: number;
+};
+
+export const updateUserStudySettings = (
+  userId: string,
+  payload: UpdateUserStudySettingsRequest,
+): Promise<void> =>
+  fetcher<void>(`${API_BASE}/users/${userId}/study-settings`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      dailyAvailableMinutes: payload.dailyAvailableMinutes,
+    }),
   });
 
 function mapAuthToSession(auth: AuthResponse): StoredAuthSession {

@@ -2,8 +2,10 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { CALENDAR_DEADLINE_TIMEZONE } from "../constants/calendarTime";
 import AppLayout from "../components/layout/AppLayout";
+import ResourceStudyPanel from "../components/study/ResourceStudyPanel";
 import { formatDeadlineDateTime } from "../utils/calendarMonth";
 import { humanizeResourceTitle } from "../utils/recommendationUtils";
+import { useAccessibleResources } from "../hooks/useAccessibleResources";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useAnalytics } from "../hooks/useAnalytics";
 import TodayPlan from "../components/dashboard/TodayPlan";
@@ -19,7 +21,9 @@ export default function TasksPage() {
   const location = useLocation();
   const { userId } = useCurrentUser();
   const analytics = useAnalytics(userId);
+  const { resourceById } = useAccessibleResources(userId);
   const { tasks, loading: tasksLoading, error: tasksError, setTaskStatus, createTask, editTask, removeTask } = useTasks(userId);
+  const [expandedStudyTaskId, setExpandedStudyTaskId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: string; title: string } | null>(null);
@@ -139,21 +143,25 @@ export default function TasksPage() {
   return (
     <AppLayout>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
-        <h2 style={{ margin: 0 }}>Tasks & Scheduling</h2>
-        <p style={{ margin: 0, color: "var(--muted)" }}>AI-assisted view (based on analytics)</p>
+        <div>
+          <h2 style={{ margin: 0 }}>Tasks & Scheduling</h2>
+          <p style={{ margin: "6px 0 0 0", color: "var(--muted)", maxWidth: 640, lineHeight: 1.5 }}>
+            Open tasks drive today&apos;s study plan. Deadlines appear on the calendar.
+          </p>
+        </div>
       </div>
 
       <p style={{ margin: "8px 0 0 0", color: "var(--muted)", fontSize: 14 }}>
         <Link to="/calendar" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
           Open month calendar
         </Link>{" "}
-        for deadlines by day · jump to{" "}
+        · jump to{" "}
         <a href="#schedule" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
-          suggested schedule
+          today&apos;s plan
         </a>{" "}
         or{" "}
         <a href="#tasks-list" style={{ color: "var(--color-ai-600)", fontWeight: 700 }}>
-          task list
+          all tasks
         </a>
       </p>
 
@@ -178,17 +186,19 @@ export default function TasksPage() {
         </section>
       )}
 
-      <div style={{ marginTop: 18, color: "var(--muted)", fontSize: 12 }}>
-        Calendar/timeline and “AI suggested schedule” are generated client-side for now (backend schedule APIs are planned).
-      </div>
-
-      <div id="schedule" style={{ scrollMarginTop: 72 }}>
-        <TodayPlan title="AI suggested schedule" />
+      <div id="schedule" style={{ scrollMarginTop: 72, marginTop: 18 }}>
+        <TodayPlan title="Today's study plan" />
       </div>
 
       <section id="tasks-list" style={{ marginTop: 16, scrollMarginTop: 72, border: "1px solid var(--border)", background: "var(--panel)", borderRadius: "var(--radius-md)", padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
-          <h3 style={{ margin: 0 }}>Your study tasks</h3>
+          <div>
+            <h3 style={{ margin: 0 }}>Your study tasks</h3>
+            <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.45 }}>
+              Recommendation-linked tasks open the learning resource here. Complete via Start → Mark completed to record
+              progress for the recommender — not only with the status button.
+            </p>
+          </div>
           <button
             onClick={() => {
               setShowCreateForm((v) => !v);
@@ -227,11 +237,16 @@ export default function TasksPage() {
           <p style={{ margin: 0, color: "rgba(239, 68, 68, 0.95)" }}>{tasksError}</p>
         ) : sortedTasks.length === 0 ? (
           <p style={{ margin: 0, color: "var(--muted)" }}>
-            No tasks yet. They are auto-created when recommendations are generated.
+            No tasks yet. Regenerate recommendations or create a custom task.
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {sortedTasks.map((task) => (
+            {sortedTasks.map((task) => {
+              const linkedResource = task.learningResourceId ? resourceById.get(task.learningResourceId) : undefined;
+              const isLinkedOpen = Boolean(task.learningResourceId) && task.status !== "Completed";
+              const studyExpanded = expandedStudyTaskId === task.id;
+
+              return (
               <div
                 key={task.id}
                 style={{
@@ -248,10 +263,30 @@ export default function TasksPage() {
                       Status: <b>{task.status}</b> • Due:{" "}
                       {formatDeadlineDateTime(task.deadlineUtc, UI_LOCALE, CALENDAR_DEADLINE_TIMEZONE)} •{" "}
                       {task.estimatedMinutes} min
+                      {task.learningResourceId ? (
+                        <span style={{ color: "var(--color-ai-600)" }}> • Linked resource</span>
+                      ) : null}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {task.status !== "Completed" ? (
+                    {isLinkedOpen ? (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedStudyTaskId((current) => (current === task.id ? null : task.id))}
+                        style={{
+                          background: "var(--color-recommend-600)",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "var(--radius-md)",
+                          padding: "7px 10px",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {studyExpanded ? "Hide study" : "Study resource"}
+                      </button>
+                    ) : null}
+                    {!isLinkedOpen && task.status !== "Completed" ? (
                       <button
                         onClick={() => void setTaskStatus(task.id, "Completed")}
                         style={{
@@ -265,7 +300,7 @@ export default function TasksPage() {
                       >
                         Mark completed
                       </button>
-                    ) : (
+                    ) : task.status === "Completed" ? (
                       <button
                         onClick={() => void setTaskStatus(task.id, "Pending")}
                         style={{
@@ -279,7 +314,7 @@ export default function TasksPage() {
                       >
                         Reopen
                       </button>
-                    )}
+                    ) : null}
                     {task.status !== "Overdue" ? (
                       <button
                         onClick={() => void setTaskStatus(task.id, "Overdue")}
@@ -332,6 +367,21 @@ export default function TasksPage() {
                     </button>
                   </div>
                 </div>
+                {isLinkedOpen && studyExpanded && task.learningResourceId ? (
+                  <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                    <ResourceStudyPanel
+                      userId={userId}
+                      resourceId={task.learningResourceId}
+                      title={linkedResource?.title ?? task.learningResourceTitle ?? task.title}
+                      durationMinutes={linkedResource?.estimatedDurationMinutes ?? task.estimatedMinutes}
+                      url={linkedResource?.url}
+                      sourceName={linkedResource?.sourceName}
+                      accessInstructions={linkedResource?.accessInstructions}
+                      context="task"
+                      linkedTaskStatus={task.status}
+                    />
+                  </div>
+                ) : null}
                 {editingTaskId === task.id ? (
                   <div style={{ marginTop: 10 }}>
                     <TaskEditor
@@ -344,7 +394,8 @@ export default function TasksPage() {
                   </div>
                 ) : null}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </section>
