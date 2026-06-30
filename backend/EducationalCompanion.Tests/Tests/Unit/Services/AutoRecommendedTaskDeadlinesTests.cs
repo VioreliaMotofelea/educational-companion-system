@@ -38,13 +38,27 @@ public sealed class AutoRecommendedTaskDeadlinesTests
     [Fact]
     public void Compute_packs_tasks_into_days_by_daily_cap_utc_calendar()
     {
-        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(UtcNoon, 60, [40, 40, 30], null).ToList();
+        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(
+            UtcNoon, 60, [40, 40, 30], null, minimumPlanningDays: 1).ToList();
         var d0 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 0);
         var d1 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 1);
         var d2 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 2);
         Assert.Equal(d0, deadlines[0]);
         Assert.Equal(d1, deadlines[1]);
         Assert.Equal(d2, deadlines[2]);
+    }
+
+    [Fact]
+    public void Compute_stretches_multiple_tasks_across_minimum_planning_window()
+    {
+        var deadlines = AutoRecommendedTaskDeadlines.ComputeDeadlinesUtc(UtcNoon, 60, [40, 40, 30], null).ToList();
+        var d0 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 0);
+        var d3 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 3);
+        var d6 = AutoRecommendedTaskDeadlines.EndOfCalendarDayAfterTomorrow(UtcNoon, null, 6);
+        Assert.Equal(3, deadlines.Count);
+        Assert.Equal(d0, deadlines[0]);
+        Assert.Equal(d3, deadlines[1]);
+        Assert.Equal(d6, deadlines[2]);
     }
 
     [Fact]
