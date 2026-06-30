@@ -152,6 +152,52 @@ public class UserProfileServiceTests
         Assert.Equal("AI", profile.Preferences.PreferredTopicsCsv); // updated
     }
 
+    [Fact]
+    public async Task UpdateStudySettingsAsync_UpdatesDailyAvailableMinutes()
+    {
+        var profile = new UserProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = "user-1",
+            DailyAvailableMinutes = 60,
+        };
+
+        var profileRepo = new FakeUserProfileRepository(profile: profile);
+        var prefsRepo = new FakeUserPreferencesRepository();
+        var service = new UserProfileService(profileRepo, prefsRepo);
+
+        await service.UpdateStudySettingsAsync(
+            "user-1",
+            new UpdateUserStudySettingsRequest(DailyAvailableMinutes: 90),
+            CancellationToken.None);
+
+        Assert.Equal(90, profile.DailyAvailableMinutes);
+        Assert.Equal(1, profileRepo.SaveCalls);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(700)]
+    public async Task UpdateStudySettingsAsync_InvalidMinutes_Throws(int minutes)
+    {
+        var profile = new UserProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = "user-1",
+            DailyAvailableMinutes = 60,
+        };
+
+        var profileRepo = new FakeUserProfileRepository(profile: profile);
+        var prefsRepo = new FakeUserPreferencesRepository();
+        var service = new UserProfileService(profileRepo, prefsRepo);
+
+        await Assert.ThrowsAsync<InvalidDailyAvailableMinutesException>(() =>
+            service.UpdateStudySettingsAsync(
+                "user-1",
+                new UpdateUserStudySettingsRequest(DailyAvailableMinutes: minutes),
+                CancellationToken.None));
+    }
+
     private sealed class FakeUserProfileRepository : IUserProfileRepository
     {
         private readonly UserProfile? _profile;

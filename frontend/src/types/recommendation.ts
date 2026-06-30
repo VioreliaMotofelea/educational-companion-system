@@ -13,5 +13,10 @@ export type Recommendation = {
     difficulty: number;
     contentType: "Article" | "Video" | "Quiz";
     estimatedDurationMinutes: number;
+    sourceName?: string | null;
+    url?: string | null;
+    accessType?: string;
+    accessInstructions?: string | null;
+    visibility?: string;
   };
 };

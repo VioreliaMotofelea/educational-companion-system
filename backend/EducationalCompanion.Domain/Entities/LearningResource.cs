@@ -14,7 +14,22 @@ public class LearningResource : AuditableEntity
 
     public ResourceContentType ContentType { get; set; }
 
+    public string? SourceName { get; set; }
+
+    public string? Url { get; set; }
+
+    public ResourceAccessType AccessType { get; set; } = ResourceAccessType.NoDirectAccess;
+
+    public string? AccessInstructions { get; set; }
+
+    public ResourceVisibility Visibility { get; set; } = ResourceVisibility.Global;
+
+    public string? OwnerUserId { get; set; }
+
     // Navigation
+    public ICollection<ResourceAccessScope> AccessScopes { get; set; } = new List<ResourceAccessScope>();
     public ResourceMetadata? Metadata { get; set; }
     public ICollection<UserInteraction> Interactions { get; set; } = new List<UserInteraction>();
+    public ICollection<ResourceFile> ResourceFiles { get; set; } = new List<ResourceFile>();
+    public ICollection<ResourceExtractedText> ExtractedTexts { get; set; } = new List<ResourceExtractedText>();
 }

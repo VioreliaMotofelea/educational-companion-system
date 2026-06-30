@@ -1,73 +1,124 @@
-# React + TypeScript + Vite
+# Frontend — Educational Companion Web App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript single-page application (Vite) for the Intelligent Educational Companion System. It provides the learner interface: dashboard, personalized recommendations, study tasks, calendar, profile, and a route for resource ingestion.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features (UI)
 
-## React Compiler
+| Area | Route | Description |
+|------|-------|-------------|
+| Dashboard | `/` | Learning analytics, recommendation preview, suggested focus blocks |
+| Recommendations | `/recommendations` | Ranked resources with hybrid explanations; can trigger AI generation |
+| Tasks | `/tasks` | Study task list and management |
+| Calendar | `/calendar` | Schedule-oriented view of tasks and study time |
+| Profile | `/profile` | Account details, preferences, mastery / difficulty insights |
+| Supplementary materials | `/materials` | Upload files with automatic text extraction |
+| Auth | `/login`, `/register` | JWT-based sign-in |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+All main routes except login/register are protected (`ProtectedRoute`).
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Project structure
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── components/     # Layout, dashboard, recommendations, tasks, calendar, …
+├── pages/          # Route-level screens
+├── routes/         # React Router setup
+├── services/       # API clients (auth, users, recommendations, ingestion, …)
+├── hooks/          # Data-fetching and UI hooks
+├── context/        # Auth context
+├── utils/          # Formatting, recommendation explanation parsing
+├── constants/      # Shared constants (e.g. calendar timezone)
+└── styles/         # Global CSS
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 20+
+- Backend API running at `http://localhost:5235`
+- AI service running at `http://localhost:8001` (for on-demand recommendation generation)
+
+---
+
+## Configuration
+
+```bash
+cp .env.example .env
 ```
+
+Required:
+
+```env
+VITE_API_URL=http://localhost:5235/api
+```
+
+Optional:
+
+```env
+# Calendar timezone; default Europe/Bucharest when unset
+# VITE_CALENDAR_TIMEZONE=local
+```
+
+---
+
+## Run (development)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+App: **http://localhost:5173**
+
+The backend must allow this origin in `Cors:AllowedOrigins` (default in Development).
+
+---
+
+## Build & preview
+
+```bash
+npm run build
+npm run preview
+```
+
+Production build output: `dist/`
+
+---
+
+## Test
+
+```bash
+npm test          # Vitest (unit tests under src/**/*.test.ts)
+npm run lint      # ESLint
+```
+
+---
+
+## API integration
+
+The frontend talks **only to the backend** (`VITE_API_URL`). It does not call the AI service directly.
+
+Typical flows:
+
+1. **Login** → `POST /api/auth/login` → JWT stored in browser storage
+2. **Recommendations** → `GET /api/users/{id}/recommendations`; if empty, `POST /api/users/{id}/recommendations/generate`
+3. **Interactions** → `POST /api/interactions` when starting/completing/rating a resource
+4. **Ingestion** → multipart upload to `/api/resources/{id}/files` for the signed-in user
+
+---
+
+## Supplementary materials
+
+Route `/materials` — attach files to learning resources in **your** catalog with automatic text extraction.
+
+- Register `alex.demo@example.com` and `bianca.demo@example.com`, then run `python3 scripts/datasets/seed_demo_catalog.py --apply-sql`.
+- **Alex** sees *Week 3 Reading — Normalization* (Course only); upload `databases-normalization-notes.md` → summary appears.
+- **Bianca** does not see that course reading in the dropdown (access control demo).
+
+Supported: `.txt`, `.md`, `.markdown`, `.docx`, selectable-text `.pdf`.

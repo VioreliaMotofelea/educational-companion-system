@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using EducationalCompanion.Api.Common;
 using EducationalCompanion.Domain.Exceptions;
+using Microsoft.Extensions.Hosting;
 
 namespace EducationalCompanion.Api.Middleware;
 
@@ -9,11 +10,13 @@ public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionMiddleware> _logger;
+    private readonly IHostEnvironment _env;
 
-    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+    public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env)
     {
         _next = next;
         _logger = logger;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -60,10 +63,13 @@ public class ExceptionMiddleware
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception occurred");
+            var message = _env.IsDevelopment()
+                ? ex.Message
+                : "An unexpected internal server error occurred.";
             await HandleExceptionAsync(
                 context,
                 HttpStatusCode.InternalServerError,
-                "An unexpected internal server error occurred.");
+                message);
         }
     }
 

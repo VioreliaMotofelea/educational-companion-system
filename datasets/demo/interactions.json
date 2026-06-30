@@ -1,0 +1,66 @@
+[
+  {
+    "userId": "demo-alex",
+    "learningResourceId": "00000000-0000-4000-8000-000000000001",
+    "interactionType": "Viewed",
+    "rating": null,
+    "timeSpentMinutes": 12,
+    "createdAtUtc": "2026-05-05T10:10:00Z"
+  },
+  {
+    "userId": "demo-alex",
+    "learningResourceId": "00000000-0000-4000-8000-000000000007",
+    "interactionType": "Completed",
+    "rating": null,
+    "timeSpentMinutes": 26,
+    "createdAtUtc": "2026-05-05T11:00:00Z"
+  },
+  {
+    "userId": "demo-alex",
+    "learningResourceId": "00000000-0000-4000-8000-000000000007",
+    "interactionType": "Rated",
+    "rating": 4,
+    "timeSpentMinutes": null,
+    "createdAtUtc": "2026-05-05T11:05:00Z"
+  },
+  {
+    "userId": "demo-bianca",
+    "learningResourceId": "00000000-0000-4000-8000-000000000004",
+    "interactionType": "Viewed",
+    "rating": null,
+    "timeSpentMinutes": 18,
+    "createdAtUtc": "2026-05-06T09:15:00Z"
+  },
+  {
+    "userId": "demo-bianca",
+    "learningResourceId": "00000000-0000-4000-8000-000000000010",
+    "interactionType": "Completed",
+    "rating": null,
+    "timeSpentMinutes": 29,
+    "createdAtUtc": "2026-05-06T10:10:00Z"
+  },
+  {
+    "userId": "demo-bianca",
+    "learningResourceId": "00000000-0000-4000-8000-000000000010",
+    "interactionType": "Rated",
+    "rating": 5,
+    "timeSpentMinutes": null,
+    "createdAtUtc": "2026-05-06T10:15:00Z"
+  },
+  {
+    "userId": "demo-catalin",
+    "learningResourceId": "00000000-0000-4000-8000-000000000006",
+    "interactionType": "Viewed",
+    "rating": null,
+    "timeSpentMinutes": 10,
+    "createdAtUtc": "2026-05-06T20:00:00Z"
+  },
+  {
+    "userId": "demo-catalin",
+    "learningResourceId": "00000000-0000-4000-8000-00000000000c",
+    "interactionType": "Skipped",
+    "rating": null,
+    "timeSpentMinutes": 0,
+    "createdAtUtc": "2026-05-06T20:20:00Z"
+  }
+]

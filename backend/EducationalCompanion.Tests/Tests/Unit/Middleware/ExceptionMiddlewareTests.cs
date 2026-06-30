@@ -6,6 +6,8 @@ using EducationalCompanion.Api.Common;
 using EducationalCompanion.Api.Middleware;
 using EducationalCompanion.Domain.Exceptions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -18,7 +20,8 @@ public class ExceptionMiddlewareTests
     {
         var middleware = new ExceptionMiddleware(
             next: _ => throw new ValidationException("bad request"),
-            logger: NullLogger<ExceptionMiddleware>.Instance);
+            logger: NullLogger<ExceptionMiddleware>.Instance,
+            env: new FakeHostEnvironment());
 
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
@@ -33,7 +36,8 @@ public class ExceptionMiddlewareTests
     {
         var middleware = new ExceptionMiddleware(
             next: _ => throw new NotFoundException("User", "missing"),
-            logger: NullLogger<ExceptionMiddleware>.Instance);
+            logger: NullLogger<ExceptionMiddleware>.Instance,
+            env: new FakeHostEnvironment());
 
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
@@ -48,7 +52,8 @@ public class ExceptionMiddlewareTests
     {
         var middleware = new ExceptionMiddleware(
             next: _ => throw new GamificationRuleViolationException("rule"),
-            logger: NullLogger<ExceptionMiddleware>.Instance);
+            logger: NullLogger<ExceptionMiddleware>.Instance,
+            env: new FakeHostEnvironment());
 
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
@@ -63,7 +68,8 @@ public class ExceptionMiddlewareTests
     {
         var middleware = new ExceptionMiddleware(
             next: _ => throw new ValidationException("bad request"),
-            logger: NullLogger<ExceptionMiddleware>.Instance);
+            logger: NullLogger<ExceptionMiddleware>.Instance,
+            env: new FakeHostEnvironment());
 
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
@@ -78,6 +84,14 @@ public class ExceptionMiddlewareTests
         Assert.NotNull(parsed);
         Assert.Equal(StatusCodes.Status400BadRequest, parsed!.Status);
         Assert.Equal("bad request", parsed!.Error);
+    }
+
+    private sealed class FakeHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+        public string ApplicationName { get; set; } = "EducationalCompanion.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }
 

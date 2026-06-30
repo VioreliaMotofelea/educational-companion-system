@@ -14,13 +14,16 @@ public class UserInteractionService : IUserInteractionService
 
     private readonly IUserInteractionRepository _repo;
     private readonly ILearningResourceRepository _learningResourceRepo;
+    private readonly IStudyTaskService _studyTaskService;
 
     public UserInteractionService(
         IUserInteractionRepository repo,
-        ILearningResourceRepository learningResourceRepo)
+        ILearningResourceRepository learningResourceRepo,
+        IStudyTaskService studyTaskService)
     {
         _repo = repo;
         _learningResourceRepo = learningResourceRepo;
+        _studyTaskService = studyTaskService;
     }
 
     public async Task<IReadOnlyList<UserInteractionResponse>> GetAllAsync(CancellationToken ct)
@@ -68,11 +71,28 @@ public class UserInteractionService : IUserInteractionService
             LearningResourceId = request.LearningResourceId,
             InteractionType = interactionType,
             Rating = request.Rating,
-            TimeSpentMinutes = request.TimeSpentMinutes
+            TimeSpentMinutes = request.TimeSpentMinutes,
+            CreatedAtUtc = DateTime.UtcNow
         };
 
         await _repo.AddAsync(entity, ct);
         await _repo.SaveChangesAsync(ct);
+
+        if (interactionType == InteractionType.Completed)
+        {
+            await _studyTaskService.MarkTaskCompletedForResourceAsync(
+                request.UserId,
+                request.LearningResourceId,
+                ct);
+        }
+        else if (interactionType == InteractionType.Skipped)
+        {
+            await _studyTaskService.DismissAutoLinkedTasksForResourceAsync(
+                request.UserId,
+                request.LearningResourceId,
+                ct);
+        }
+
         return Map(entity);
     }
 

@@ -1,17 +1,39 @@
+import threading
 from typing import Any, List
 
 import requests
 
 from api.exceptions import BackendError
-from config import BACKEND_BASE_URL
+from config import (
+    BACKEND_BASE_URL,
+    BACKEND_BULK_GET_TIMEOUT_S,
+    BACKEND_DISABLE_DATA_CACHE,
+    BACKEND_REQUEST_TIMEOUT_S,
+)
 from models.recommendation_models import (
     BackendRecommendationsResponse,
     RecommendationBatch,
     RecommendationItem,
 )
 
-# Timeout for all backend HTTP calls (seconds)
-REQUEST_TIMEOUT = 30
+_resources_cache: list | None = None
+_backend_bulk_cache_lock = threading.Lock()
+
+
+def clear_backend_data_cache() -> None:
+    global _resources_cache
+    with _backend_bulk_cache_lock:
+        _resources_cache = None
+    try:
+        from recommender.collaborative import clear_collaborative_matrix_cache
+        from recommender.content_based import clear_content_based_tfidf_cache
+        from recommender.content_semantic import clear_content_semantic_cache
+
+        clear_collaborative_matrix_cache()
+        clear_content_based_tfidf_cache()
+        clear_content_semantic_cache()
+    except ImportError:
+        pass
 
 
 def _backend_call(
@@ -19,12 +41,8 @@ def _backend_call(
     url: str,
     *,
     json_body: Any = None,
-    timeout: int = REQUEST_TIMEOUT,
+    timeout: int = BACKEND_REQUEST_TIMEOUT_S,
 ) -> requests.Response:
-    """
-    Perform a backend HTTP call and raise BackendError on failure.
-    Centralizes timeout, connection, and HTTP error handling.
-    """
     try:
         if method == "GET":
             r = requests.get(url, timeout=timeout)
@@ -90,15 +108,44 @@ def get_all_interactions() -> list:
     """
     Get all users' interactions (no query params).
     Required for collaborative filtering user–resource matrix.
+
+    Not cached: interactions change when learners complete resources during a session.
     """
-    r = _backend_call("GET", f"{BACKEND_BASE_URL}/api/interactions")
+    r = _backend_call(
+        "GET",
+        f"{BACKEND_BASE_URL}/api/interactions",
+        timeout=BACKEND_BULK_GET_TIMEOUT_S,
+    )
+    return r.json()
+
+
+def get_accessible_resources(user_id: str) -> list:
+    """Get learning resources the user may receive in recommendations (visibility + scopes)."""
+    r = _backend_call(
+        "GET",
+        f"{BACKEND_BASE_URL}/api/users/{user_id}/resources/accessible",
+        timeout=BACKEND_BULK_GET_TIMEOUT_S,
+    )
     return r.json()
 
 
 def get_resources() -> list:
-    """Get full learning resource catalog."""
-    r = _backend_call("GET", f"{BACKEND_BASE_URL}/api/resources")
-    return r.json()
+    """Get full learning resource catalog (admin/evaluation only — not for user recommendation ranking)."""
+    global _resources_cache
+    if not BACKEND_DISABLE_DATA_CACHE and _resources_cache is not None:
+        return _resources_cache
+    with _backend_bulk_cache_lock:
+        if not BACKEND_DISABLE_DATA_CACHE and _resources_cache is not None:
+            return _resources_cache
+        r = _backend_call(
+            "GET",
+            f"{BACKEND_BASE_URL}/api/resources",
+            timeout=BACKEND_BULK_GET_TIMEOUT_S,
+        )
+        data = r.json()
+        if not BACKEND_DISABLE_DATA_CACHE:
+            _resources_cache = data
+        return data
 
 
 def get_user_mastery(user_id: str) -> dict:

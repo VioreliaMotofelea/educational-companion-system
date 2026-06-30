@@ -3,6 +3,7 @@ import { getUserMastery } from "../services/api";
 import type { Mastery } from "../types";
 
 export function useMastery(userId: string) {
+  const [refreshTick, setRefreshTick] = useState(0);
   const [state, setState] = useState<{
     loadedForUserId: string | null;
     data: Mastery | null;
@@ -41,7 +42,13 @@ export function useMastery(userId: string) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, refreshTick]);
+
+  useEffect(() => {
+    const onInteractionUpdated = () => setRefreshTick((x) => x + 1);
+    window.addEventListener("interaction-updated", onInteractionUpdated);
+    return () => window.removeEventListener("interaction-updated", onInteractionUpdated);
+  }, []);
 
   return {
     data: state.loadedForUserId === userId ? state.data : null,

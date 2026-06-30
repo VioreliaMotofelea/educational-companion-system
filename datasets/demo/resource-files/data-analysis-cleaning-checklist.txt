@@ -1,0 +1,133 @@
+DATA ANALYSIS — DATA CLEANING AND EXPLORATORY CHECKLIST
+Catalog: Data Analysis Learning Unit 011 (Global) — data cleaning and missing values
+======================================================================================
+
+INTENDED LEARNING OUTCOMES
+--------------------------
+After using this checklist on a lab dataset you should be able to:
+  - Profile structure, types, and missingness before modeling.
+  - Treat missing values, outliers, and inconsistent categories deliberately.
+  - Remove or document duplicate rows and type conversion issues.
+  - Produce exploratory summaries and visual checks for sanity.
+  - Write a short report paragraph for non-technical stakeholders.
+
+Keywords: data cleaning, missing values, outliers, exploratory analysis, visualization,
+reporting, stakeholder communication, data profiling, duplicate rows, type conversion.
+
+
+WHEN TO USE THIS CHECKLIST
+--------------------------
+Apply at the start of every analysis sprint—before charts go to slides or
+dashboards. In the thesis demo app, attaching this file to a Data Analysis
+resource lets ingestion build a semantic summary for recommendations about
+cleaning, visualization, and communicating findings.
+
+
+PHASE 1 — DATASET PROFILING
+----------------------------
+[ ] Record row count and column count
+[ ] List primary key candidate(s); verify uniqueness
+[ ] Capture % missing per column
+[ ] Note data types per column (string, int, float, date)
+[ ] Sample 5 random rows for manual read-through
+[ ] Log source, collection date, and known limitations
+
+
+PHASE 2 — MISSING VALUES
+--------------------------
+[ ] Classify missing: MCAR / MAR / MNAR (best guess)
+[ ] Distinguish NULL vs empty string vs "N/A" token
+[ ] Choose strategy per column: drop, impute (mean/median/mode), flag, model
+[ ] Document impact on sample size after drops
+[ ] Never impute target leakage from future information
+
+
+PHASE 3 — OUTLIERS
+------------------
+[ ] Boxplot or IQR rule for numeric columns
+[ ] Domain caps (age > 120, negative prices)
+[ ] Investigate before delete: data entry error vs rare true event
+[ ] Log every removal with row id and reason
+
+
+PHASE 4 — INCONSISTENT CATEGORIES
+---------------------------------
+[ ] Trim whitespace and unify case (e.g., "Yes", "yes", "Y")
+[ ] Map synonyms to canonical labels (USA, United States, US)
+[ ] Encode ordered categories explicitly (low < medium < high)
+[ ] Reject ambiguous merges without subject-matter check
+
+
+PHASE 5 — DUPLICATE ROWS
+------------------------
+[ ] Exact duplicate scan on all columns
+[ ] Key-based duplicate scan (same student_id + session_id)
+[ ] Keep first / keep last / manual merge policy documented
+
+
+PHASE 6 — TYPE CONVERSION
+-------------------------
+[ ] Parse dates with explicit format; flag failures
+[ ] Convert numeric strings; treat commas and currency symbols
+[ ] Boolean columns: standardize to true/false
+[ ] Categorical vs free text: avoid accidental factorization of names
+
+
+PHASE 7 — EXPLORATORY SUMMARIES
+-------------------------------
+[ ] mean, median, std for numeric fields
+[ ] value counts for low-cardinality categoricals
+[ ] correlation scan for obvious multicollinearity
+[ ] Group-by sanity check (avg score by section)
+
+
+PHASE 8 — VISUAL CHECKS
+-----------------------
+[ ] Histogram of key numeric measure
+[ ] Bar chart of top categories
+[ ] Line chart if time index exists
+[ ] Note chart title, axis label, and unit for stakeholders
+
+
+PHASE 9 — STAKEHOLDER COMMUNICATION
+-----------------------------------
+Write 3–5 sentences for a non-technical reader:
+  - What dataset represents (population, time span)
+  - Biggest quality issue found and fix applied
+  - One chart insight and one limitation
+Avoid jargon: say "missing answers" not "null imputation" unless audience is technical.
+
+
+MINI CASE STUDY (FICTIONAL COURSE SURVEY)
+-----------------------------------------
+Survey of 240 learners; columns: learner_id, module, minutes_studied, confidence_1_5.
+Findings:
+  - 12 rows duplicate learner_id + module (keep latest timestamp).
+  - confidence stored as "4", 4.0, four → map to integer 1–5.
+  - minutes_studied max 1800 flagged; 3 rows removed as entry errors.
+  - 8% missing confidence; imputed with median per module for exploratory only.
+Outcome: cleaned table 228 rows; report states imputation limitation for executives.
+
+
+DELIVERABLE CHECKLIST (LAB SUBMISSION)
+--------------------------------------
+[ ] Cleaning log (markdown or notebook appendix)
+[ ] Before/after row counts
+[ ] Two plots with captions
+[ ] Stakeholder paragraph (max 120 words)
+[ ] List of columns excluded from modeling and why
+
+
+REFLECTION
+----------
+1) Which quality issue would most mislead a recommendation model if ignored?
+2) When should missing data stay missing in the published dashboard?
+3) How does resource visibility affect who sees an extracted cleaning summary?
+
+CONNECTION TO ADAPTIVE LEARNING
+-------------------------------
+Uploading this checklist enriches accessible catalog metadata so the companion
+can suggest related units on visualization, hypothesis testing, or reporting.
+Enrichment respects access scope; summaries are not public full-text dumps.
+
+Original thesis demo material — not copied from external datasets or papers.

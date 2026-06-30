@@ -28,7 +28,24 @@ public class UserEdmReadRepository : IUserEdmReadRepository
         var completed = await _context.UserInteractions
             .AsNoTracking()
             .CountAsync(i => i.UserId == userId && i.InteractionType == InteractionType.Completed, ct);
-        var completionRate = viewed > 0 ? (double)completed / viewed * 100.0 : 0.0;
+        // Compute completion rate on distinct engaged resources to keep metric bounded [0, 100].
+        var engagedResourceCount = await _context.UserInteractions
+            .AsNoTracking()
+            .Where(i =>
+                i.UserId == userId &&
+                (i.InteractionType == InteractionType.Viewed || i.InteractionType == InteractionType.Completed))
+            .Select(i => i.LearningResourceId)
+            .Distinct()
+            .CountAsync(ct);
+        var completedResourceCount = await _context.UserInteractions
+            .AsNoTracking()
+            .Where(i => i.UserId == userId && i.InteractionType == InteractionType.Completed)
+            .Select(i => i.LearningResourceId)
+            .Distinct()
+            .CountAsync(ct);
+        var completionRate = engagedResourceCount > 0
+            ? (double)completedResourceCount / engagedResourceCount * 100.0
+            : 0.0;
 
         var avgRating = await _context.UserInteractions
             .AsNoTracking()

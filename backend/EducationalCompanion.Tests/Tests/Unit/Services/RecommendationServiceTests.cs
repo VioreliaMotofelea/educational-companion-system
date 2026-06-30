@@ -9,6 +9,9 @@ using EducationalCompanion.Domain.Entities;
 using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using EducationalCompanion.Tests.Tests.Unit.Fakes;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace EducationalCompanion.Tests.Tests.Unit.Services;
@@ -29,7 +32,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(Recommendations: null!, ReplaceExisting: true);
 
@@ -37,7 +46,7 @@ public class RecommendationServiceTests
     }
 
     [Fact]
-    public async Task CreateBatchForUserAsync_ThrowsWhenEmptyRecommendations()
+    public async Task CreateBatchForUserAsync_EmptyRecommendationsWithReplaceExisting_ClearsExisting()
     {
         var userRepo = new FakeUserProfileRepository(hasUser: true);
         var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
@@ -46,11 +55,19 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(new List<CreateRecommendationItemRequest>(), ReplaceExisting: true);
 
-        await Assert.ThrowsAsync<ValidationException>(() => service.CreateBatchForUserAsync(UserId, request));
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+        Assert.Equal(0, result.CreatedCount);
+        Assert.True(result.ReplacedExisting);
     }
 
     [Fact]
@@ -63,7 +80,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -82,7 +105,13 @@ public class RecommendationServiceTests
         var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>());
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -104,7 +133,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -128,7 +163,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -158,7 +199,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -190,7 +237,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -219,7 +272,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -241,7 +300,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var tooLongAlgo = new string('a', 51); // Max is 50
         var request = new CreateRecommendationsBatchRequest(
@@ -267,7 +332,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var request = new CreateRecommendationsBatchRequest(
             new List<CreateRecommendationItemRequest>
@@ -289,7 +360,13 @@ public class RecommendationServiceTests
         });
         var recRepo = new FakeRecommendationRepository();
 
-        var service = new RecommendationService(userRepo, resourceRepo, recRepo);
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
 
         var tooLongExplanation = new string('b', 1001); // Max is 1000
         var request = new CreateRecommendationsBatchRequest(
@@ -301,6 +378,470 @@ public class RecommendationServiceTests
 
         await Assert.ThrowsAsync<ValidationException>(() => service.CreateBatchForUserAsync(UserId, request));
     }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_PersistsOnlyAccessibleRecommendations()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "Global", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+            [R2] = new LearningResource { Title = "Restricted", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "accessible"),
+                new CreateRecommendationItemRequest(R2, 0.8, "Hybrid", "inaccessible"),
+            },
+            ReplaceExisting: true);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, result.CreatedCount);
+        Assert.True(result.ReplacedExisting);
+        Assert.Single(recRepo.Stored);
+        Assert.Equal(R1, recRepo.Stored[0].LearningResourceId);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_AppendMode_DiscardsInaccessibleAndPersistsAccessible()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "Resource A", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+            [R2] = new LearningResource { Title = "Resource B", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "accessible A"),
+                new CreateRecommendationItemRequest(R2, 0.8, "Hybrid", "inaccessible B"),
+            },
+            ReplaceExisting: false);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.False(result.ReplacedExisting);
+        Assert.Equal(1, result.CreatedCount);
+        Assert.Contains(recRepo.Stored, r => r.LearningResourceId == R1);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+        Assert.Equal(2, recRepo.Stored.Count);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_ReplaceExistingWithOnlyInaccessible_ClearsRecommendations()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R2] = new LearningResource { Title = "Restricted", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, Array.Empty<Guid>());
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R2, 0.7, "Hybrid", "inaccessible"),
+            },
+            ReplaceExisting: true);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(0, result.CreatedCount);
+        Assert.True(result.ReplacedExisting);
+        Assert.Equal(1, recRepo.DeleteCalls);
+        Assert.Empty(recRepo.Stored);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_AppendMode_AllInaccessible_ThrowsAndDoesNotMutateStore()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R2] = new LearningResource { Title = "Restricted", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, Array.Empty<Guid>());
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R2, 0.7, "Hybrid", "inaccessible"),
+            },
+            ReplaceExisting: false);
+
+        await Assert.ThrowsAsync<ValidationException>(() => service.CreateBatchForUserAsync(UserId, request));
+
+        Assert.Equal(0, recRepo.DeleteCalls);
+        Assert.Equal(0, recRepo.SaveCalls);
+        Assert.Single(recRepo.Stored);
+        Assert.Equal(Guid.Parse("33333333-3333-3333-3333-333333333333"), recRepo.Stored[0].LearningResourceId);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_ReplaceMode_PartialBatch_PersistsOnlyAccessibleSubset()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "Resource A", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+            [R2] = new LearningResource { Title = "Resource B", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository(seedUserId: UserId);
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "accessible"),
+                new CreateRecommendationItemRequest(R2, 0.8, "Hybrid", "inaccessible"),
+            },
+            ReplaceExisting: true);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, result.CreatedCount);
+        Assert.True(result.ReplacedExisting);
+        Assert.Equal(1, recRepo.DeleteCalls);
+        Assert.Single(recRepo.Stored);
+        Assert.Equal(R1, recRepo.Stored[0].LearningResourceId);
+        Assert.DoesNotContain(recRepo.Stored, r => r.LearningResourceId == R2);
+        Assert.Equal(1, studyTasks.EnsurePendingTasksCallCount);
+        Assert.Single(studyTasks.LastRecommendationResourceIds);
+        Assert.Equal(R1, studyTasks.LastRecommendationResourceIds[0]);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_DeduplicatesByResourceId_KeepsHighestScore()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.4, "Hybrid", "lower"),
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "higher"),
+            },
+            ReplaceExisting: true);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, result.CreatedCount);
+        var stored = Assert.Single(recRepo.Stored);
+        Assert.Equal(0.9, stored.Score);
+        Assert.Equal("higher", stored.Explanation);
+        Assert.Equal(1, studyTasks.EnsurePendingTasksCallCount);
+        Assert.Single(studyTasks.LastRecommendationResourceIds);
+        Assert.Equal(R1, studyTasks.LastRecommendationResourceIds[0]);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_ThrowsWhenRecommendationItemIsNull()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest?> { null }!,
+            ReplaceExisting: true);
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => service.CreateBatchForUserAsync(UserId, request));
+        Assert.Contains("null", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(recRepo.Stored);
+        Assert.Equal(0, recRepo.SaveCalls);
+        Assert.Equal(0, studyTasks.EnsurePendingTasksCallCount);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_AcceptsAlgorithmUsed_WhenOnlyWhitespacePaddingExceedsLimitBeforeTrim()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var inner = new string('a', MaxAlgorithmUsedLength);
+        var padded = $"  {inner}  ";
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.5, padded, "Explanation"),
+            },
+            ReplaceExisting: true);
+
+        var result = await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, result.CreatedCount);
+        Assert.Equal(inner, Assert.Single(recRepo.Stored).AlgorithmUsed);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_TrimsExplanation_BeforeValidationAndStorage()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.5, "Hybrid", "  Good match  "),
+            },
+            ReplaceExisting: true);
+
+        await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal("Good match", Assert.Single(recRepo.Stored).Explanation);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_ThrowsWhenTrimmedAlgorithmUsedTooLong()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var padded = $"  {new string('a', MaxAlgorithmUsedLength + 1)}  ";
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.5, padded, "Explanation"),
+            },
+            ReplaceExisting: true);
+
+        await Assert.ThrowsAsync<ValidationException>(() => service.CreateBatchForUserAsync(UserId, request));
+        Assert.Empty(recRepo.Stored);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_ChecksResourceExistenceOncePerDistinctId()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new CountingLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            new PermissiveResourceAccessRepository(resourceRepo),
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.4, "Hybrid", "first"),
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "second"),
+            },
+            ReplaceExisting: true);
+
+        await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, resourceRepo.GetByIdCallCount);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_StudyTasksReceiveOnlyPersistedAccessibleResourceIds()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "Resource A", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+            [R2] = new LearningResource { Title = "Resource B", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+        var studyTasks = new RecordingStudyTaskService();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            studyTasks,
+            accessRepo,
+            NullLogger<RecommendationService>.Instance);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "accessible"),
+                new CreateRecommendationItemRequest(R2, 0.85, "Hybrid", "inaccessible"),
+            },
+            ReplaceExisting: true);
+
+        await service.CreateBatchForUserAsync(UserId, request);
+
+        Assert.Equal(1, studyTasks.EnsurePendingTasksCallCount);
+        Assert.Equal(UserId, studyTasks.LastRecommendationUserId);
+        Assert.Single(studyTasks.LastRecommendationResourceIds);
+        Assert.Equal(R1, studyTasks.LastRecommendationResourceIds[0]);
+        Assert.DoesNotContain(R2, studyTasks.LastRecommendationResourceIds);
+    }
+
+    [Fact]
+    public async Task CreateBatchForUserAsync_LogsDiscardedCountWithoutResourceTitles()
+    {
+        var userRepo = new FakeUserProfileRepository(hasUser: true);
+        var resourceRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [R1] = new LearningResource { Title = "Visible Title A", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+            [R2] = new LearningResource { Title = "Secret Title B", Topic = "T", Difficulty = 2, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article },
+        });
+        var recRepo = new FakeRecommendationRepository();
+        var accessRepo = new FakeResourceAccessRepository(resourceRepo, new[] { R1 });
+        var logger = new CaptureLogger<RecommendationService>();
+
+        var service = new RecommendationService(
+            userRepo,
+            resourceRepo,
+            recRepo,
+            new NoOpStudyTaskService(),
+            accessRepo,
+            logger);
+
+        var request = new CreateRecommendationsBatchRequest(
+            new List<CreateRecommendationItemRequest>
+            {
+                new CreateRecommendationItemRequest(R1, 0.9, "Hybrid", "ok"),
+                new CreateRecommendationItemRequest(R2, 0.8, "Hybrid", "blocked"),
+            },
+            ReplaceExisting: true);
+
+        await service.CreateBatchForUserAsync(UserId, request);
+
+        var infoLogs = logger.Entries.Where(e => e.Level == LogLevel.Information).ToList();
+        var debugLogs = logger.Entries.Where(e => e.Level == LogLevel.Debug).ToList();
+        Assert.NotEmpty(infoLogs);
+        Assert.Contains(infoLogs, e => e.Message.Contains("discarded", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(infoLogs, e => e.Message.Contains("1", StringComparison.Ordinal));
+        Assert.All(infoLogs, e => Assert.DoesNotContain(R2.ToString(), e.Message));
+        Assert.All(infoLogs, e => Assert.DoesNotContain("Secret Title B", e.Message));
+        Assert.All(infoLogs, e => Assert.DoesNotContain("Visible Title A", e.Message));
+        Assert.Contains(debugLogs, e => e.Message.Contains(R2.ToString(), StringComparison.Ordinal));
+    }
+
+    private const int MaxAlgorithmUsedLength = 50;
 
     private sealed class FakeUserProfileRepository : IUserProfileRepository
     {
@@ -322,15 +863,39 @@ public class RecommendationServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
-    private sealed class FakeLearningResourceRepository : ILearningResourceRepository
+    private sealed class CountingLearningResourceRepository : FakeLearningResourceRepository
+    {
+        public int GetByIdCallCount { get; private set; }
+
+        public CountingLearningResourceRepository(Dictionary<Guid, LearningResource> resourcesById)
+            : base(resourcesById)
+        {
+        }
+
+        public override Task<LearningResource?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        {
+            GetByIdCallCount++;
+            return base.GetByIdAsync(id, ct);
+        }
+    }
+
+    private class FakeLearningResourceRepository : ILearningResourceRepository
     {
         private readonly Dictionary<Guid, LearningResource> _resourcesById;
-        public FakeLearningResourceRepository(Dictionary<Guid, LearningResource> resourcesById) => _resourcesById = resourcesById;
+        public FakeLearningResourceRepository(Dictionary<Guid, LearningResource> resourcesById)
+        {
+            _resourcesById = new Dictionary<Guid, LearningResource>();
+            foreach (var (id, resource) in resourcesById)
+            {
+                resource.Id = id;
+                _resourcesById[id] = resource;
+            }
+        }
 
         public Task<IReadOnlyList<LearningResource>> SearchAsync(string? topic, int? difficulty, string? contentType, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<LearningResource>>(Array.Empty<LearningResource>());
 
-        public Task<LearningResource?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        public virtual Task<LearningResource?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
             _resourcesById.TryGetValue(id, out var res);
             return Task.FromResult(res);

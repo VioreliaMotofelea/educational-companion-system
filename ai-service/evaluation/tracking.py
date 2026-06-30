@@ -27,11 +27,17 @@ def save_logs(logs: List[RecommendationLog], path: str = EVALUATION_LOG_FILE) ->
         json.dump([log.model_dump() for log in logs], f, indent=2)
 
 
-def append_recommendation_session(user_id: str, recommended_items: List[str]) -> RecommendationLog:
+def append_recommendation_session(
+    user_id: str,
+    recommended_items: List[str],
+    *,
+    variant: str | None = None,
+) -> RecommendationLog:
     logs = load_logs()
     new_log = RecommendationLog(
         user_id=user_id,
         recommended_items=recommended_items,
+        variant=variant,
     )
     logs.append(new_log)
     save_logs(logs)
@@ -49,7 +55,6 @@ def register_completion(user_id: str, item_id: str) -> bool:
 def _register_event(user_id: str, item_id: str, field: str) -> bool:
     logs = load_logs()
 
-    # Walk from latest to oldest so events attach to latest recommendation session.
     for log in reversed(logs):
         if log.user_id != user_id:
             continue

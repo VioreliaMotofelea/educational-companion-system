@@ -1,0 +1,77 @@
+[
+  {
+    "file": "databases-normalization-notes.md",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000066",
+    "suggestedResourceTitle": "Week 3 Reading — Normalization",
+    "topic": "Databases",
+    "extractionMethod": "MarkdownText",
+    "visibilityDemo": "CourseOnly",
+    "recommendedPreset": "alex-066",
+    "notes": "Primary thesis demo: rich course reading on normalization, BCNF, FDs, anomalies. Use Alex; Bianca blocked."
+  },
+  {
+    "file": "sql-joins-seminar-worksheet.md",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000065",
+    "suggestedResourceTitle": "SQL Joins Seminar Worksheet",
+    "topic": "Databases",
+    "extractionMethod": "MarkdownText",
+    "visibilityDemo": "CourseOnly",
+    "recommendedPreset": "alex-065",
+    "notes": "Seminar 4 worksheet: INNER/LEFT JOIN, GROUP BY, cardinality, tracing. Pairs with normalization reading (066); Alex only."
+  },
+  {
+    "file": "programming-control-flow-practice.txt",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000001",
+    "suggestedResourceTitle": "Programming Fundamentals Learning Unit 001",
+    "topic": "Programming Fundamentals",
+    "extractionMethod": "PlainText",
+    "visibilityDemo": "Global",
+    "notes": "Lab handout: conditionals, loops, tracing, debugging, pseudocode. Attach to resource 001 (Global)."
+  },
+  {
+    "file": "study-skills-spaced-repetition-plan.md",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000006",
+    "suggestedResourceTitle": "Study Skills / Productivity Learning Unit 006",
+    "topic": "Study Skills / Productivity",
+    "extractionMethod": "MarkdownText",
+    "visibilityDemo": "Global",
+    "notes": "Planning and spaced repetition; good when learner needs productivity recommendations."
+  },
+  {
+    "file": "web-development-accessibility-lab.docx",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000062",
+    "suggestedResourceTitle": "Web Development Learning Unit 098",
+    "topic": "Web Development",
+    "extractionMethod": "DocxText",
+    "visibilityDemo": "Global",
+    "notes": "Regenerate via generate_binary_demo_files.py. Semantic HTML, a11y, forms, keyboard nav."
+  },
+  {
+    "file": "ai-classification-metrics-worksheet.pdf",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000064",
+    "suggestedResourceTitle": "Artificial Intelligence Learning Unit 100",
+    "topic": "Artificial Intelligence",
+    "extractionMethod": "PdfText",
+    "visibilityDemo": "Global",
+    "recommendedPreset": "alex-064",
+    "notes": "Regenerate via script. Two-page selectable PDF: metrics, confusion matrix, threshold."
+  },
+  {
+    "file": "data-analysis-cleaning-checklist.txt",
+    "suggestedResourceId": "00000000-0000-4000-8000-00000000000b",
+    "suggestedResourceTitle": "Data Analysis Learning Unit 011",
+    "topic": "Data Analysis",
+    "extractionMethod": "PlainText",
+    "visibilityDemo": "Global",
+    "notes": "Data cleaning, missing values, outliers, stakeholder reporting. Matches cleaning topic."
+  },
+  {
+    "file": "sample-databases-notes.md",
+    "suggestedResourceId": "00000000-0000-4000-8000-000000000066",
+    "suggestedResourceTitle": "Week 3 Reading — Normalization",
+    "topic": "Databases",
+    "extractionMethod": "MarkdownText",
+    "visibilityDemo": "CourseOnly",
+    "notes": "Legacy minimal extraction sample only; do not use as main demo narrative."
+  }
+]

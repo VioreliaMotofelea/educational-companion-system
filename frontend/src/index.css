@@ -36,6 +36,186 @@
   --radius-lg: 16px;
   --radius-md: 12px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  --sidebar-bg: #151f2e;
+  --sidebar-text: rgba(241, 245, 249, 0.98);
+  --sidebar-muted: rgba(148, 163, 184, 0.88);
+  --sidebar-edge: rgba(100, 116, 139, 0.35);
+  --sidebar-divider: rgba(148, 163, 184, 0.12);
+  --sidebar-hover: rgba(255, 255, 255, 0.07);
+  --sidebar-active-bg: rgba(37, 99, 235, 0.32);
+  --sidebar-active-text: #f8fafc;
+  --sidebar-active-border: rgba(147, 197, 253, 0.28);
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-page {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+
+.profile-card h3 {
+  margin: 0 0 4px 0;
+  font-size: 17px;
+}
+
+.profile-card-sub {
+  margin: 0 0 16px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-settings-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-settings-split > div + div {
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.profile-form input,
+.profile-form select {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.profile-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.profile-btn-primary {
+  background: var(--color-ai-600);
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.profile-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.profile-insights-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.profile-stat {
+  flex: 1 1 100px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.profile-stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.profile-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.profile-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.profile-activity-item {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .profile-settings-split {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .profile-settings-split > div + div {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  .profile-insights-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 * {
@@ -71,5 +251,15 @@ a {
     --muted: rgba(71, 85, 105, 0.98);
     --border: rgba(71, 85, 105, 0.22);
     --border-strong: rgba(71, 85, 105, 0.35);
+
+    --sidebar-bg: #e8edf3;
+    --sidebar-text: rgba(15, 23, 42, 0.96);
+    --sidebar-muted: rgba(71, 85, 105, 0.92);
+    --sidebar-edge: rgba(71, 85, 105, 0.18);
+    --sidebar-divider: rgba(71, 85, 105, 0.12);
+    --sidebar-hover: rgba(15, 23, 42, 0.06);
+    --sidebar-active-bg: rgba(37, 99, 235, 0.16);
+    --sidebar-active-text: rgba(15, 23, 42, 0.98);
+    --sidebar-active-border: rgba(37, 99, 235, 0.35);
   }
 }

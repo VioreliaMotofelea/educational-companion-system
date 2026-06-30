@@ -4,9 +4,11 @@ using EducationalCompanion.Api.Dtos.Mastery;
 using EducationalCompanion.Api.Dtos.Recommendations;
 using EducationalCompanion.Api.Services.Abstractions;
 using EducationalCompanion.Domain.Entities;
+using EducationalCompanion.Domain.Enums;
 using EducationalCompanion.Domain.Exceptions;
 using EducationalCompanion.Infrastructure.Edm;
 using EducationalCompanion.Infrastructure.Repositories.Abstractions;
+using System.Globalization;
 
 namespace EducationalCompanion.Api.Services.Implementations;
 
@@ -18,15 +20,21 @@ public class UserEdmService : IUserEdmService
     private readonly IUserProfileRepository _userProfileRepo;
     private readonly IRecommendationRepository _recommendationRepo;
     private readonly IUserEdmReadRepository _edmReadRepo;
+    private readonly IResourceAccessRepository _accessRepo;
+    private readonly IUserInteractionRepository _interactionRepo;
 
     public UserEdmService(
         IUserProfileRepository userProfileRepo,
         IRecommendationRepository recommendationRepo,
-        IUserEdmReadRepository edmReadRepo)
+        IUserEdmReadRepository edmReadRepo,
+        IResourceAccessRepository accessRepo,
+        IUserInteractionRepository interactionRepo)
     {
         _userProfileRepo = userProfileRepo;
         _recommendationRepo = recommendationRepo;
         _edmReadRepo = edmReadRepo;
+        _accessRepo = accessRepo;
+        _interactionRepo = interactionRepo;
     }
 
     public async Task<UserAnalyticsResponse> GetAnalyticsAsync(string userId, CancellationToken ct = default)
@@ -61,8 +69,26 @@ public class UserEdmService : IUserEdmService
         await EnsureUserExistsAsync(userId, ct);
 
         var recommendations = await _recommendationRepo.GetByUserIdWithResourceAsync(userId, limit, ct);
+        var accessibleIds = (await _accessRepo.GetAccessibleResourcesForUserAsync(userId, ct))
+            .Select(r => r.Id)
+            .ToHashSet();
+
+        var completedResourceIds = (await _interactionRepo.GetByUserAsync(userId, ct))
+            .Where(i => i.InteractionType == InteractionType.Completed)
+            .Select(i => i.LearningResourceId)
+            .ToHashSet();
+
+        var skippedResourceIds = (await _interactionRepo.GetByUserAsync(userId, ct))
+            .Where(i => i.InteractionType == InteractionType.Skipped)
+            .Select(i => i.LearningResourceId)
+            .ToHashSet();
+
         return recommendations
-            .Where(r => r.LearningResource != null)
+            .Where(r =>
+                r.LearningResource != null
+                && accessibleIds.Contains(r.LearningResourceId)
+                && !completedResourceIds.Contains(r.LearningResourceId)
+                && !skippedResourceIds.Contains(r.LearningResourceId))
             .Select(r => MapToRecommendationItem(r))
             .ToList();
     }
@@ -102,12 +128,10 @@ public class UserEdmService : IUserEdmService
     private static string BuildAnalyticsSummary(UserAnalyticsKpisData kpis)
     {
         var parts = new List<string>();
-        if (kpis.TotalResourcesViewed > 0)
-            parts.Add($"{kpis.TotalResourcesCompleted} of {kpis.TotalResourcesViewed} viewed resources completed ({kpis.CompletionRatePercent}% completion rate).");
+        if (kpis.TotalResourcesViewed + kpis.TotalResourcesCompleted > 0)
+            parts.Add($"{kpis.TotalResourcesCompleted} completed resources across your engaged set ({kpis.CompletionRatePercent}% completion rate).");
         if (kpis.TotalTimeSpentMinutes > 0)
             parts.Add($"Total study time: {kpis.TotalTimeSpentMinutes} minutes.");
-        if (kpis.TotalXpEarned > 0)
-            parts.Add($"Level {kpis.CurrentLevel}, {kpis.TotalXpEarned} XP; {kpis.GamificationEventsCount} gamification events.");
         if (kpis.TasksCompleted + kpis.TasksPending + kpis.TasksOverdue > 0)
             parts.Add($"Tasks: {kpis.TasksCompleted} completed, {kpis.TasksPending} pending, {kpis.TasksOverdue} overdue.");
         return parts.Count > 0 ? string.Join(" ", parts) : "No activity yet. Start by viewing and completing resources.";
@@ -118,15 +142,7 @@ public class UserEdmService : IUserEdmService
         var res = r.LearningResource!;
         return new UserRecommendationItemResponse(
             r.Id,
-            new LearningResourceResponse(
-                res.Id,
-                res.Title,
-                res.Description,
-                res.Topic,
-                res.Difficulty,
-                res.EstimatedDurationMinutes,
-                res.ContentType.ToString()
-            ),
+            LearningResourceService.Map(res),
             r.Score,
             r.AlgorithmUsed,
             r.Explanation,
@@ -153,7 +169,9 @@ public class UserEdmService : IUserEdmService
             ? (int)Math.Min(MaxDifficulty, Math.Ceiling(avgDifficulty) + 1)
             : (int)Math.Round(avgDifficulty);
         suggested = Math.Clamp(suggested, MinDifficulty, MaxDifficulty);
-        var reason = $"Based on {topicData.Count} topic(s); average completed difficulty {avgDifficulty:F1}, rating {avgRating:F1}. Suggested next: {suggested}.";
+        var avgDifficultyText = avgDifficulty.ToString("F1", CultureInfo.InvariantCulture);
+        var avgRatingText = avgRating.ToString("F1", CultureInfo.InvariantCulture);
+        var reason = $"Based on {topicData.Count} topic(s); average completed difficulty {avgDifficultyText}, rating {avgRatingText}. Suggested next: {suggested}.";
         return (suggested, reason);
     }
 }

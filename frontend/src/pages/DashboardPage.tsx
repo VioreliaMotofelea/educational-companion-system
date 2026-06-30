@@ -9,7 +9,7 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <WelcomeHeader />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(360px, 1fr) minmax(320px, 420px)", gap: 16, alignItems: "start" }}>
+      <div className="dashboard-grid">
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <RecommendationsPreview />
           <TodayPlan />
