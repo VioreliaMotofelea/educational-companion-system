@@ -42,4 +42,12 @@ public sealed class RecordingStudyTaskService : IStudyTaskService
 
     public Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
         Task.CompletedTask;
+
+    public List<(string UserId, Guid ResourceId)> DismissCalls { get; } = new();
+
+    public Task DismissAutoLinkedTasksForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default)
+    {
+        DismissCalls.Add((userId, learningResourceId));
+        return Task.CompletedTask;
+    }
 }

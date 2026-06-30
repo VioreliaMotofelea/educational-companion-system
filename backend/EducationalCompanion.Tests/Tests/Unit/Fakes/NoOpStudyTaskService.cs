@@ -30,4 +30,7 @@ public sealed class NoOpStudyTaskService : IStudyTaskService
 
     public Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
         Task.CompletedTask;
+
+    public Task DismissAutoLinkedTasksForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default) =>
+        Task.CompletedTask;
 }

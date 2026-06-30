@@ -260,6 +260,28 @@ public class StudyTaskService : IStudyTaskService
         await RefillAutoTasksFromCurrentRecommendationsAsync(userId, ct);
     }
 
+    public async Task DismissAutoLinkedTasksForResourceAsync(
+        string userId,
+        Guid learningResourceId,
+        CancellationToken ct = default)
+    {
+        await EnsureUserExistsAsync(userId, ct);
+
+        var autoLinked = await _dbContext.StudyTasks
+            .Where(t =>
+                t.UserId == userId
+                && t.LearningResourceId == learningResourceId
+                && t.Notes == AutoCreatedFromRecommendationsNote
+                && (t.Status == DomainTaskStatus.Pending || t.Status == DomainTaskStatus.Overdue))
+            .ToListAsync(ct);
+
+        if (autoLinked.Count == 0)
+            return;
+
+        _dbContext.StudyTasks.RemoveRange(autoLinked);
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
     public async Task DeleteAsync(string userId, Guid taskId, CancellationToken ct = default)
     {
         await EnsureUserExistsAsync(userId, ct);

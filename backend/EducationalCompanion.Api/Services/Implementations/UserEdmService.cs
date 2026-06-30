@@ -78,11 +78,17 @@ public class UserEdmService : IUserEdmService
             .Select(i => i.LearningResourceId)
             .ToHashSet();
 
+        var skippedResourceIds = (await _interactionRepo.GetByUserAsync(userId, ct))
+            .Where(i => i.InteractionType == InteractionType.Skipped)
+            .Select(i => i.LearningResourceId)
+            .ToHashSet();
+
         return recommendations
             .Where(r =>
                 r.LearningResource != null
                 && accessibleIds.Contains(r.LearningResourceId)
-                && !completedResourceIds.Contains(r.LearningResourceId))
+                && !completedResourceIds.Contains(r.LearningResourceId)
+                && !skippedResourceIds.Contains(r.LearningResourceId))
             .Select(r => MapToRecommendationItem(r))
             .ToList();
     }

@@ -85,6 +85,13 @@ public class UserInteractionService : IUserInteractionService
                 request.LearningResourceId,
                 ct);
         }
+        else if (interactionType == InteractionType.Skipped)
+        {
+            await _studyTaskService.DismissAutoLinkedTasksForResourceAsync(
+                request.UserId,
+                request.LearningResourceId,
+                ct);
+        }
 
         return Map(entity);
     }

@@ -12,5 +12,6 @@ public interface IStudyTaskService
     Task EnsurePendingTasksForRecommendationsAsync(string userId, IReadOnlyList<Guid> resourceIds, CancellationToken ct = default);
     Task SyncRecommendationLinkedTasksAsync(string userId, IReadOnlyList<Guid> activeResourceIds, CancellationToken ct = default);
     Task MarkTaskCompletedForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default);
+    Task DismissAutoLinkedTasksForResourceAsync(string userId, Guid learningResourceId, CancellationToken ct = default);
 }
 

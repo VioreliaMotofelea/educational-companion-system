@@ -195,6 +195,33 @@ public class UserInteractionServiceTests
         Assert.Equal(12, stored.TimeSpentMinutes);
     }
 
+    [Fact]
+    public async Task CreateAsync_Skipped_CallsDismissAutoLinkedTasks()
+    {
+        var interactionRepo = new FakeUserInteractionRepository();
+        var learningId = Guid.NewGuid();
+        var learningRepo = new FakeLearningResourceRepository(new Dictionary<Guid, LearningResource>
+        {
+            [learningId] = new LearningResource { Title = "t", Topic = "T", Difficulty = 1, EstimatedDurationMinutes = 10, ContentType = ResourceContentType.Article }
+        });
+        var studyTasks = new RecordingStudyTaskService();
+        var service = new UserInteractionService(interactionRepo, learningRepo, studyTasks);
+
+        var request = new CreateUserInteractionRequest(
+            UserId: "user-1",
+            LearningResourceId: learningId,
+            InteractionType: "Skipped",
+            Rating: null,
+            TimeSpentMinutes: null);
+
+        var result = await service.CreateAsync(request, CancellationToken.None);
+
+        Assert.Equal(InteractionType.Skipped.ToString(), result.InteractionType);
+        Assert.Single(studyTasks.DismissCalls);
+        Assert.Equal("user-1", studyTasks.DismissCalls[0].UserId);
+        Assert.Equal(learningId, studyTasks.DismissCalls[0].ResourceId);
+    }
+
     private sealed class FakeUserInteractionRepository : IUserInteractionRepository
     {
         public Dictionary<Guid, UserInteraction> Stored { get; }

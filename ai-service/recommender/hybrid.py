@@ -374,7 +374,7 @@ def generate_hybrid(
     completed_ids = {
         str(i["learningResourceId"])
         for i in interactions
-        if i.get("interactionType") == "Completed"
+        if i.get("interactionType") in ("Completed", "Skipped")
     }
 
     content_map, content_mode = _build_content_score_map(
