@@ -57,7 +57,10 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
         foreach (var entry in ChangeTracker.Entries<AuditableEntity>())
         {
             if (entry.State == EntityState.Added)
-                entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+            {
+                if (entry.Entity.CreatedAtUtc == default)
+                    entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+            }
             else if (entry.State == EntityState.Modified)
                 entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
         }
