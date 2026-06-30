@@ -18,6 +18,8 @@ export type ResourceStudyPanelProps = {
   linkedTaskStatus?: "Pending" | "Overdue" | "Completed" | null;
   /** Hide helper paragraphs (e.g. on Calendar) */
   compact?: boolean;
+  /** Show "Skip for now" — default true on recommendation cards */
+  allowSkip?: boolean;
 };
 
 function isOpenableHttpUrl(url: string | null | undefined): url is string {
@@ -110,11 +112,13 @@ export default function ResourceStudyPanel({
   defaultControlsOpen = false,
   linkedTaskStatus = null,
   compact = false,
+  allowSkip = context === "recommendation",
 }: ResourceStudyPanelProps) {
   const displayTitle = humanizeResourceTitle(title);
   const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isRating, setIsRating] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [isOpen, setIsOpenState] = useState(
     () => defaultControlsOpen || readStudyControlsOpen(userId, resourceId),
   );
@@ -127,6 +131,7 @@ export default function ResourceStudyPanel({
   };
   const [hasStarted, setHasStarted] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const [hasSkipped, setHasSkipped] = useState(false);
   const [timeSpentMinutes, setTimeSpentMinutes] = useState<number>(Math.max(1, durationMinutes));
   const [sessionStartedAtMs, setSessionStartedAtMs] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -314,6 +319,41 @@ export default function ResourceStudyPanel({
     }
   };
 
+  const handleSkip = async () => {
+    setError(null);
+    setOk(null);
+    setIsSkipping(true);
+
+    try {
+      const trackedMinutes =
+        hasStarted && sessionStartedAtMs
+          ? Math.max(1, Math.max(Math.round(timeSpentMinutes), Math.ceil(elapsedSeconds / 60)))
+          : undefined;
+
+      await createInteraction({
+        userId,
+        learningResourceId: resourceId,
+        interactionType: "Skipped",
+        timeSpentMinutes: trackedMinutes,
+      });
+
+      setHasStarted(false);
+      setHasSkipped(true);
+      setSessionStartedAtMs(null);
+      setActiveSession(userId, null);
+      setOk(
+        linkedTaskContext
+          ? "Resource skipped. Auto-created tasks for this suggestion were removed."
+          : "Skipped for now. It will drop from your current recommendations.",
+      );
+      notifyInteractionUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not skip resource.");
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
   return (
     <div>
       {linkedTaskContext && !compact ? (
@@ -409,20 +449,40 @@ export default function ResourceStudyPanel({
         <button
           type="button"
           onClick={() => void handleStart()}
-          disabled={isStarting || hasStarted}
+          disabled={isStarting || hasStarted || hasSkipped || hasCompleted}
           style={{
             background: "var(--color-recommend-600)",
             color: "white",
             border: "none",
             padding: "10px 14px",
             borderRadius: "var(--radius-md)",
-            cursor: isStarting || hasStarted ? "not-allowed" : "pointer",
-            opacity: isStarting || hasStarted ? 0.7 : 1,
+            cursor: isStarting || hasStarted || hasSkipped || hasCompleted ? "not-allowed" : "pointer",
+            opacity: isStarting || hasStarted || hasSkipped || hasCompleted ? 0.7 : 1,
             fontWeight: 700,
           }}
         >
-          {isStarting ? "Starting..." : hasStarted ? "Started" : "Start"}
+          {isStarting ? "Starting..." : hasSkipped ? "Skipped" : hasStarted ? "Started" : "Start"}
         </button>
+
+        {allowSkip && !hasCompleted ? (
+          <button
+            type="button"
+            onClick={() => void handleSkip()}
+            disabled={isSkipping || hasSkipped}
+            title="Not interested right now — no rating required"
+            style={{
+              background: "transparent",
+              color: hasSkipped ? "var(--muted)" : "var(--text)",
+              border: "1px solid var(--border-strong)",
+              padding: "10px 14px",
+              borderRadius: "var(--radius-md)",
+              cursor: isSkipping || hasSkipped ? "not-allowed" : "pointer",
+              opacity: isSkipping || hasSkipped ? 0.6 : 1,
+            }}
+          >
+            {isSkipping ? "Skipping..." : hasSkipped ? "Skipped" : "Skip for now"}
+          </button>
+        ) : null}
 
         <button
           type="button"

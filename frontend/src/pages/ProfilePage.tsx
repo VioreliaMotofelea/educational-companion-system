@@ -291,7 +291,9 @@ export default function ProfilePage() {
                         ? "var(--color-recommend-600)"
                         : it.interactionType === "Viewed"
                           ? "var(--color-ai-600)"
-                          : "var(--muted)";
+                          : it.interactionType === "Skipped"
+                            ? "rgba(245, 158, 11, 0.95)"
+                            : "var(--muted)";
 
                   return (
                     <li key={it.id} className="profile-activity-item">
